@@ -43,7 +43,12 @@ def get_scrapers(source_filter: Optional[str] = None) -> list[BaseScraper]:
 
 def _import_adapters():
     """Import all adapter modules so they register themselves."""
-    try:
-        import src.scrapers.amazon  # noqa: F401
-    except ImportError:
-        pass
+    for module in [
+        "src.scrapers.amazon",
+        "src.scrapers.barclays",
+        "src.scrapers.citi",
+    ]:
+        try:
+            __import__(module)
+        except ImportError:
+            pass
