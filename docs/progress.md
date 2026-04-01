@@ -139,3 +139,47 @@ Define the minimum stable contracts (data models, persistence layer, dedupe, bas
 
 ### Next recommended task
 - Implement the first source adapter (pick the simplest career page from the curated list)
+
+---
+
+### Date
+2026-04-01
+
+### Task
+v1 first source: Amazon scraper, orchestrator, CSV export, CLI
+
+### Goal
+Build the first working end-to-end scrape pipeline: source adapter → orchestrator → persist → dedupe → CSV export.
+
+### Files changed
+- `src/scrapers/amazon.py` — Amazon Jobs adapter using JSON search API (pagination, URL construction)
+- `src/scrapers/orchestrator.py` — ScrapeOrchestrator: runs scrapers, normalizes, dedupes, persists, logs runs/errors
+- `src/scrapers/registry.py` — Config-driven scraper registry with adapter auto-registration
+- `src/utils/csv_export.py` — CSV export of persisted jobs
+- `src/cli.py` — CLI entrypoint with scrape, export, stats commands
+- `tests/unit/test_amazon_scraper.py` — 7 tests for Amazon adapter (parsing, pagination, error handling)
+- `tests/unit/test_orchestrator.py` — 8 tests for orchestrator (dedupe, error isolation, run logging)
+- `tests/unit/test_csv_export.py` — 5 tests for CSV export
+
+### What changed
+- Amazon adapter uses `search.json` API endpoint (Layer 2 — API interception)
+- Orchestrator isolates per-source failures, logs runs to scrape_runs table
+- Registry auto-imports adapters and matches them to sources.yaml entries
+- CLI supports `--source` filter, `--json` output, CSV export to file or stdout
+- Live integration test passed: 2 Amazon Mumbai jobs scraped, persisted, deduplicated on re-run, exported to CSV
+
+### Decisions made
+- Amazon chosen as first source because it has a native JSON API (easiest, most reliable)
+- Research found: Barclays & Citi use TalentBrew (server-side HTML, BeautifulSoup parseable), BofA needs Playwright (hardest)
+- Scraper registry uses module-level `register_adapter()` calls for self-registration
+
+### Validation
+- 64 unit tests, all passing (0.07s)
+- Live test: Amazon API returned 2 jobs for Mumbai software engineer search
+- Dedupe verified: second run inserted 0, skipped 2
+
+### Blockers
+- None
+
+### Next recommended task
+- Add Barclays and Citi adapters (same TalentBrew platform, server-side HTML)

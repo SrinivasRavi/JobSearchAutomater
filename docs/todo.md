@@ -13,13 +13,17 @@
 - [x] Add tests for “same scraper must never persist same job twice”.
 - [x] Add source configuration file for curated URLs.
 
-## Now
-- [ ] Implement one source adapter only, for a single company URL.
-- [ ] Persist discovered jobs from the first source.
-- [ ] Add CSV export of persisted jobs.
-- [ ] Add run summary output: discovered, inserted, skipped_duplicate, failed.
+## Done (v1 first source)
+- [x] Implement one source adapter only, for a single company URL. (Amazon — JSON API)
+- [x] Persist discovered jobs from the first source.
+- [x] Add CSV export of persisted jobs.
+- [x] Add run summary output: discovered, inserted, skipped_duplicate, failed.
+- [x] Add scrape orchestrator with per-source error isolation.
+- [x] Add CLI entrypoint (scrape, export, stats commands).
+- [x] Add scraper registry with config-driven source loading.
+- [x] Live integration test passed: Amazon scraper → persist → dedupe → CSV export.
 
-## After first source works
+## Now
 - [ ] Add second source adapter.
 - [ ] Add third source adapter.
 - [ ] Refactor shared extraction helpers only if repeated patterns are proven.
