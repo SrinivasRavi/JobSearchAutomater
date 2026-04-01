@@ -1,18 +1,21 @@
 # Todo
 
+## Done (v0)
+- [x] Create initial repo structure for scraper, persistence, and shared utilities.
+- [x] Define the v1 Job model in code.
+- [x] Define application status enum with minimum statuses for v1.
+- [x] Create persistence schema for jobs.
+- [x] Add unique constraint or equivalent logic for intra-scraper dedupe using clean job link.
+- [x] Implement `clean_job_link` utility.
+- [x] Create scrape run logging model/table/file.
+- [x] Create scrape error logging model/table/file.
+- [x] Add tests for clean link dedupe.
+- [x] Add tests for “same scraper must never persist same job twice”.
+- [x] Add source configuration file for curated URLs.
+
 ## Now
-- [ ] Create initial repo structure for scraper, persistence, and shared utilities.
-- [ ] Define the v1 Job model in code.
-- [ ] Define application status enum with minimum statuses for v1.
-- [ ] Create persistence schema for jobs.
-- [ ] Add unique constraint or equivalent logic for intra-scraper dedupe using clean job link.
-- [ ] Implement `clean_job_link` utility.
-- [ ] Create scrape run logging model/table/file.
-- [ ] Create scrape error logging model/table/file.
 - [ ] Implement one source adapter only, for a single company URL.
 - [ ] Persist discovered jobs from the first source.
-- [ ] Add tests for clean link dedupe.
-- [ ] Add tests for “same scraper must never persist same job twice”.
 - [ ] Add CSV export of persisted jobs.
 - [ ] Add run summary output: discovered, inserted, skipped_duplicate, failed.
 
@@ -20,7 +23,6 @@
 - [ ] Add second source adapter.
 - [ ] Add third source adapter.
 - [ ] Refactor shared extraction helpers only if repeated patterns are proven.
-- [ ] Add source configuration file for curated URLs.
 - [ ] Add source-by-source enable/disable switch.
 - [ ] Add retry behavior for transient source failures.
 - [ ] Add per-source timeout handling.

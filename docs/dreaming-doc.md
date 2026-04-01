@@ -949,3 +949,59 @@ Highest-leverage near-term interpretation:
 - only then expand into autopilot, multi-profile orchestration, scoring, and referrals.
 
 This document is expected to change as implementation teaches us what really matters.
+
+---
+
+## 21. Architecture decisions (decided 2026-04-01)
+
+### Language: Python 3.11+
+Mature scraping ecosystem (requests, httpx, BeautifulSoup, Playwright). Zero compilation overhead. Easy to integrate with LangChain, n8n, MCP servers, and Apify APIs.
+
+### Datastore: SQLite
+Local-first, zero-config, single-file database. Handles 100K+ rows with proper indexing in milliseconds. Concurrent writes are not a concern for a single-user tool. All DB access is behind a repository layer so swapping to PostgreSQL later is a single-module change.
+
+Indexes from day one: `clean_job_link` (unique), `company_name`, `application_status`, `scraped_timestamp`.
+
+### Scraping: Layered approach
+- **Layer 1 — HTTP + HTML parsing** (requests/httpx + BeautifulSoup): For sites that serve HTML directly.
+- **Layer 2 — API interception** (httpx): Many career sites are SPAs with JSON APIs behind them. Call the API directly.
+- **Layer 3 — Browser automation** (Playwright): Only when JavaScript rendering is unavoidable and no API exists.
+- **Layer 4 — External API sources** (Apify, etc.): Third-party scraper APIs that return JSON.
+
+Each source adapter declares which layer it uses. One adapter failure does not crash the run.
+
+### Source adapter pattern
+Each source is an isolated module implementing a `BaseScraper` interface. Supports both HTML-based and API-based sources. Config-driven source registry (YAML) maps company names to URLs and adapter classes.
+
+### Scheduling: CLI + launchd
+The scraper is a CLI tool triggered by macOS launchd (or cron). No long-running daemon. `caffeinate` can prevent idle sleep during runs. A second always-on Mac (locked, plugged in, sleep disabled) is the simplest "server."
+
+### Integration surface for v2+ and external tools
+- **Python API:** `JobRepository` is importable by any Python module (LangChain agents, MCP tools, scoring modules).
+- **CLI with JSON output:** Callable from n8n "Execute Command" nodes, cron, or shell scripts.
+- **Local HTTP API (v2):** A thin FastAPI layer on top of the same repository. The Chrome extension and any external tool become API clients.
+
+### v2 Chrome extension interface
+The extension communicates with a local HTTP API:
+- `GET /api/next-job?status=APPLY_READY` → returns job + UserProfile fields
+- `POST /api/application` → reports submission result
+- The backend owns all state; the extension is a stateless form-filler.
+
+### Project structure
+```
+JobSearchAutomater/
+├── src/
+│   ├── models/          # Job, UserProfile, enums
+│   ├── scrapers/        # Source adapters (one per company/source)
+│   │   └── base.py      # Abstract BaseScraper interface
+│   ├── persistence/     # SQLite database + repository
+│   ├── normalizer/      # Raw → canonical Job transformation
+│   ├── filters/         # Role/location rules engine
+│   └── utils/           # URL cleaning, logging, config
+├── tests/
+│   ├── unit/
+│   └── integration/
+├── config/              # Source URLs, scraper settings
+├── docs/
+└── data/                # SQLite DB file, CSV exports
+```
