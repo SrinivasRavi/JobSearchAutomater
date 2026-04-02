@@ -183,3 +183,49 @@ Build the first working end-to-end scrape pipeline: source adapter → orchestra
 
 ### Next recommended task
 - Add Barclays and Citi adapters (same TalentBrew platform, server-side HTML)
+
+---
+
+### Date
+2026-04-02
+
+### Task
+v1 adapters batch 2: Barclays, Citi, Nomura, Deutsche Bank, Visa, MSCI
+
+### Goal
+Build adapters for 6 more curated sources. Bring total to 7 working adapters covering 3 scraping approaches: JSON API, HTML parsing, and Algolia search.
+
+### Files changed
+- `src/scrapers/barclays.py` — TalentBrew HTML parser with pagination
+- `src/scrapers/citi.py` — TalentBrew HTML parser with pagination
+- `src/scrapers/nomura.py` — SAP SuccessFactors HTML table parser
+- `src/scrapers/deutsche_bank.py` — Beesite REST API (country filter broken)
+- `src/scrapers/visa.py` — SmartRecruiters public API
+- `src/scrapers/msci.py` — Algolia search API with public credentials
+- `src/scrapers/registry.py` — Added all 7 adapters to auto-import
+- Tests for all 6 new adapters (28 new tests)
+
+### What changed
+- 7 adapters total across 4 scraping layers: JSON API (Amazon, Deutsche Bank, Visa), HTML parsing (Barclays, Citi, Nomura), Algolia (MSCI)
+- Research completed on all 20 curated sources — classified by difficulty
+- Live tested: Amazon=2, Barclays=36, Citi=96, Nomura=42, Deutsche Bank=10 (wrong country), Visa=17, MSCI=5
+- 92 unit tests + 1 integration test, all passing
+
+### Decisions made
+- 11 of 20 sources need Playwright (HARD): Goldman, JPMorgan, Oracle, Morgan Stanley, Microsoft, BofA, S&P, Nasdaq, BNP Paribas, Morningstar, UBS
+- Google is MODERATE (embedded JS data, no browser needed)
+- Deutsche Bank API ignores country filter — needs further investigation
+- Will add Playwright-based adapters in a later batch
+
+### Validation
+- 92 unit tests, all passing (0.16s)
+- Live tests passed for 6 of 7 new adapters (Deutsche Bank works but returns wrong country)
+
+### Blockers
+- Deutsche Bank Beesite API does not respect country filter — returns only German jobs
+- 11 sources need Playwright which is not yet integrated
+
+### Next recommended task
+- Investigate Deutsche Bank country filtering
+- Add Google adapter (embedded JS data parsing)
+- Or: set up Playwright for the 11 HARD sources

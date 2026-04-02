@@ -23,19 +23,39 @@
 - [x] Add scraper registry with config-driven source loading.
 - [x] Live integration test passed: Amazon scraper → persist → dedupe → CSV export.
 
+## Done (v1 adapters batch 2)
+- [x] Barclays adapter (TalentBrew HTML, pagination) — 36 jobs live
+- [x] Citi adapter (TalentBrew HTML, pagination) — 96 jobs live
+- [x] Nomura adapter (SAP SuccessFactors HTML table) — 42 jobs live
+- [x] Deutsche Bank adapter (Beesite JSON API) — works but country filter broken (API ignores param)
+- [x] Visa adapter (SmartRecruiters JSON API) — 17 jobs live
+- [x] MSCI adapter (Algolia JSON API) — 5 jobs live
+
 ## Now
-- [ ] Add second source adapter.
-- [ ] Add third source adapter.
-- [ ] Refactor shared extraction helpers only if repeated patterns are proven.
+- [ ] Investigate Deutsche Bank country filtering (Beesite API ignores country param)
 - [ ] Add source-by-source enable/disable switch.
 - [ ] Add retry behavior for transient source failures.
 - [ ] Add per-source timeout handling.
 
+## Remaining sources — by difficulty
+### EASY/MODERATE (no browser needed)
+- [ ] Google — embedded JS data in AF_initDataCallback, parseable
+### HARD (need Playwright/headless browser)
+- [ ] Goldman Sachs — Next.js SPA, Apollo GraphQL, needs session
+- [ ] JPMorgan — Oracle HCM SPA, needs session
+- [ ] Oracle — Oracle HCM SPA, needs session
+- [ ] Morgan Stanley — Eightfold SPA, CSRF-gated API
+- [ ] Microsoft — Eightfold SPA, CSRF-gated API
+- [ ] Bank of America — Adobe AEM, fully client-rendered
+- [ ] S&P Global — Jibe SPA, API-driven
+- [ ] Nasdaq — Workday SPA, needs session
+- [ ] BNP Paribas — Akamai WAF blocks non-browser requests
+- [ ] Morningstar — Phenom People, client-rendered widgets
+- [ ] UBS — IBM BrassRing, session-gated AJAX
+
 ## Later in v1
-- [ ] Add remaining curated company listing sources.
 - [ ] Improve normalization consistency across sources.
 - [ ] Review whether clean link dedupe is safe for every source.
-- [ ] Add optional local dataset viewer or simple query script if needed.
 - [ ] Add documentation for how to run one source vs all sources.
 - [ ] Add smoke test for full scrape run.
 

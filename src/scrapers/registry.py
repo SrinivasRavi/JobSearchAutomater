@@ -47,6 +47,10 @@ def _import_adapters():
         "src.scrapers.amazon",
         "src.scrapers.barclays",
         "src.scrapers.citi",
+        "src.scrapers.nomura",
+        "src.scrapers.deutsche_bank",
+        "src.scrapers.visa",
+        "src.scrapers.msci",
     ]:
         try:
             __import__(module)
