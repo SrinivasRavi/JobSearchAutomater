@@ -3,6 +3,10 @@
 ## Goal
 Move from job discovery to job application. The system fills application forms using a UserProfile, with human review before submission.
 
+**Primary flow (v2):** CLI batch — system picks jobs from the queue, opens a visible browser, fills the form, user confirms in terminal.
+
+**Secondary flow (later):** Chrome extension — user discovers a job themselves, clicks the extension, picks a UserProfile, extension fills the form in-page. This will be built independently and integrated later.
+
 ## What v1 delivered (context for v2)
 - 14 working scrapers across HTTP APIs and Playwright
 - SQLite persistence with dedupe
@@ -11,28 +15,22 @@ Move from job discovery to job application. The system fills application forms u
 - Playwright already integrated
 
 ## v2 end-state
-The user runs a CLI command. The system opens a visible browser, navigates to a job's application page, fills the form using UserProfile data, and pauses for human review. The user confirms or skips. The system records the result.
+User runs `python3 -m src.cli apply --next`. System opens a visible Chromium window, navigates to the job's application page, fills the form using the selected UserProfile, and pauses. User reviews the filled form in the browser, then confirms/skips in the terminal. System records the result.
 
 ---
 
 ## Architecture Decisions (resolved)
 
-### 1. Apply mechanism: Playwright headed mode (not Chrome extension)
+### 1. Apply mechanism: Playwright headed mode
 
 **Decision**: Use Playwright in headed mode (visible browser window) for form filling.
 
-**Why not a Chrome extension?**
-- Chrome extensions require building a separate UI, manifest, content scripts, message passing, and packaging
-- They need a separate local HTTP API server running simultaneously
-- The extension can't be distributed via Chrome Web Store (private tool), so it needs manual sideloading
-- Playwright is already integrated and working for scraping
-
-**Why Playwright headed?**
+**Why?**
 - User can see exactly what the browser is doing
-- Reuses existing Playwright infrastructure
-- Human review = the user looks at the filled form in the visible browser, then confirms in terminal
-- No separate API server needed for v2 (the CLI drives everything)
-- Simpler to build, test, and debug
+- Reuses existing Playwright infrastructure (already working for scraping)
+- Human review = user looks at the filled form in the visible browser, confirms in terminal
+- Simpler to build, test, and debug than a Chrome extension
+- No separate API server needed — the CLI drives everything
 
 **How it works:**
 1. CLI command: `python3 -m src.cli apply --job-id 42` or `python3 -m src.cli apply --next`
@@ -44,62 +42,65 @@ The user runs a CLI command. The system opens a visible browser, navigates to a 
 7. On 'n': closes, records APPLY_FAILED with reason HUMAN_REJECTED
 8. On 'skip': closes, no status change
 
-### 2. UserProfile: YAML config file (not database)
+### 2. UserProfile: Multiple YAML files
 
-**Decision**: Store UserProfile as a YAML file at `config/user_profile.yaml`.
+**Decision**: Store each UserProfile as a separate YAML file in `config/profiles/`.
 
-**Why YAML, not DB?**
-- UserProfile is static configuration, not runtime data
-- User can edit it directly in their editor
-- Only one profile needed for v2 (dreaming-doc explicitly says "one UserProfile only")
-- No CRUD API needed
-- Easy to version control (but .gitignore it since it contains PII)
+```
+config/profiles/
+├── example.yaml          (template, committed to git)
+├── backend_mumbai.yaml   (real profile, gitignored)
+├── ai_remote.yaml        (real profile, gitignored)
+└── backend_bangalore.yaml
+```
 
-**Schema:**
+**Why multiple files?**
+- User wants to compare profiles quickly (open two files side by side)
+- Each file is self-contained — easy to create a new profile by copying
+- No multi-profile DB schema needed — just glob the directory
+- `.gitignore` the real files (PII), commit only `example.yaml`
+
+**Schema (each file):**
 ```yaml
-# config/user_profile.yaml
+# config/profiles/backend_mumbai.yaml
+profile_name: "Backend Mumbai"
+
 name:
   first: "Srini"
   last: "Ravi"
-email: "srini@example.com"
+email: "srini.backend@example.com"
 phone: "+91-XXXXXXXXXX"
+
 location:
   city: "Mumbai"
   state: "Maharashtra"
   country: "India"
   zip: "400001"
-resume_path: "config/resume.pdf"
+
+resume_path: "config/resumes/backend_resume.pdf"
 linkedin_url: "https://linkedin.com/in/srini"
 github_url: "https://github.com/SrinivasRavi"
 portfolio_url: ""
 
-# Work authorization
 work_authorized: true
 sponsorship_required: false
-visa_status: ""
 
-# Experience
 years_of_experience: 5
 current_company: ""
 current_title: ""
 notice_period_days: 30
 
-# Education (most recent)
 education:
   degree: "Bachelor of Engineering"
   major: "Computer Science"
   university: ""
   graduation_year: 2020
 
-# Preferences (used for filtering, not form filling)
 preferred_roles:
   - "Software Engineer"
   - "Backend Engineer"
   - "Software Developer"
-salary_expectation: ""
-willing_to_relocate: false
 
-# Default answers for common ATS questions
 default_answers:
   gender: "Prefer not to say"
   ethnicity: "Prefer not to say"
@@ -114,33 +115,23 @@ default_answers:
 **Why per-ATS?**
 - Every ATS has different form structure, field names, required fields, and submission flow
 - Workday forms look nothing like Greenhouse forms
-- A generic "find all inputs and fill them" approach is too fragile
+- A generic "find all inputs and fill them" approach is too fragile for Playwright
 - The adapter pattern already works well for scrapers
 
 **Registry design:**
 ```python
-# Map of ATS platform name -> filler class
 _FILLER_MAP: dict[str, type[BaseFormFiller]] = {}
 
-def get_filler_for_url(url: str) -> Optional[BaseFormFiller]:
+def get_filler_for_url(url: str, profile: UserProfile) -> Optional[BaseFormFiller]:
     """Detect ATS platform from URL and return appropriate filler."""
-    # e.g., "*.myworkdayjobs.com" -> WorkdayFiller
-    # e.g., "*.greenhouse.io" -> GreenhouseFiller
 ```
 
 **ATS platforms to support (ordered by job count in our DB):**
 1. **Oracle HCM** (JPMorgan, Oracle) — 625 jobs — highest priority
-2. **Goldman Sachs custom** (higher.gs.com) — 273 jobs
-3. **Workday** (Nasdaq) — 25 jobs
-4. **Phenom People** (Morningstar) — 54 jobs
-5. **SmartRecruiters** (Visa) — 17 jobs
-6. **Google custom** — 16 jobs
-7. **Microsoft/Eightfold** — 14 jobs
-8. **TalentBrew** (Barclays, Citi) — 75 jobs (but apply link goes to different ATS)
-9. **Adobe AEM** (BofA) — 4 jobs
-10. **Others** as discovered
+2. **Workday** (Nasdaq + many other companies) — 25 jobs but very common platform
+3. **Others** as needed
 
-**Start with Oracle HCM and Workday** — they cover the most jobs and are well-documented platforms.
+**Start with Oracle HCM and Workday.**
 
 ### 4. Application tracking: New `applications` table
 
@@ -156,12 +147,17 @@ def get_filler_for_url(url: str) -> Optional[BaseFormFiller]:
 ```sql
 CREATE TABLE applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    job_id INTEGER REFERENCES jobs(id),
+    profile_name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'PENDING',
     -- PENDING, FORM_FILLED, SUBMITTED, FAILED, SKIPPED
     applied_timestamp TEXT,
     ats_platform TEXT,
+    job_url TEXT,
+    job_title TEXT,
+    company_name TEXT,
     failure_reason TEXT,
+    apply_method TEXT NOT NULL DEFAULT 'cli',  -- 'cli' or 'extension'
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -175,6 +171,8 @@ CREATE TABLE application_attempts (
     screenshot_path TEXT
 );
 ```
+
+**Note**: `job_id` is nullable to support extension-applied jobs that may not exist in our scraped DB. `job_url`/`job_title`/`company_name` are stored directly for attribution. `profile_name` tracks which profile was used. `apply_method` distinguishes CLI vs extension.
 
 **Status flow:** Job.application_status still gets updated (APPLIED, APPLY_FAILED) for CLI queries, but the detailed tracking lives in the applications table.
 
@@ -195,16 +193,10 @@ CREATE TABLE application_attempts (
 **Decision**: Playwright file chooser interception.
 
 ```python
-# When a file input or "Upload Resume" button is detected:
 page.set_input_files("input[type='file']", profile.resume_path)
-# Or for drag-drop zones:
-with page.expect_file_chooser() as fc_info:
-    page.click("button:has-text('Upload')")
-file_chooser = fc_info.value
-file_chooser.set_files(profile.resume_path)
 ```
 
-This is standard Playwright — no special infrastructure needed.
+Standard Playwright — no special infrastructure needed.
 
 ### 7. Screenshot capture for debugging
 
@@ -216,26 +208,25 @@ page.screenshot(path=f"data/screenshots/{job_id}_before.png")
 page.screenshot(path=f"data/screenshots/{job_id}_after.png")
 ```
 
-Useful for debugging when a form fill goes wrong. Low cost, high value.
-
 ---
 
 ## Task Breakdown
 
-Each task is self-contained and can be built independently. Tasks are ordered by dependency.
+### Phase A: Shared Backbone (Tasks 1-3, parallelizable)
 
-### Task 1: UserProfile model and config loader
-**What**: Create `src/models/user_profile.py` with a UserProfile dataclass and a loader that reads `config/user_profile.yaml`.
+#### Task 1: UserProfile model and multi-profile loader
+**What**: UserProfile dataclass + loader for `config/profiles/*.yaml`.
 **Files**:
 - `src/models/user_profile.py` (new)
-- `config/user_profile.example.yaml` (new — template without PII, committed to git)
+- `config/profiles/example.yaml` (new — template without PII, committed to git)
 - `tests/unit/test_user_profile.py` (new)
-- `.gitignore` — add `config/user_profile.yaml`
+- `.gitignore` — add `config/profiles/*.yaml`, `!config/profiles/example.yaml`
 
 **Interface**:
 ```python
 @dataclass
 class UserProfile:
+    profile_name: str
     first_name: str
     last_name: str
     email: str
@@ -261,177 +252,144 @@ class UserProfile:
     preferred_roles: list[str]
     default_answers: dict[str, str]
 
-def load_user_profile(path: str = "config/user_profile.yaml") -> UserProfile:
-    """Load UserProfile from YAML. Raises FileNotFoundError with helpful message if missing."""
+    def summary(self) -> str:
+        """One-line summary: 'Backend Mumbai (srini.backend@example.com)'"""
+
+    def to_dict(self) -> dict:
+        """For JSON serialization."""
+
+def load_profile(name: str) -> UserProfile:
+    """Load config/profiles/{name}.yaml. Raises FileNotFoundError if missing."""
+
+def list_profiles() -> list[tuple[str, str]]:
+    """Return [(profile_name, summary), ...] for all profiles in config/profiles/."""
 ```
 
-**Tests**: Load from valid YAML, handle missing file, handle missing optional fields with defaults.
-**Acceptance**: `UserProfile` loads from YAML, all fields accessible, missing file gives clear error.
+**Tests**: Load profile, list profiles, handle missing file, handle missing optional fields with defaults, to_dict round-trip.
+**Acceptance**: Multiple profiles load correctly, summaries are human-readable.
 
 ---
 
-### Task 2: Application persistence (DB schema + repository)
-**What**: Add `applications` and `application_attempts` tables. Add repository methods.
+#### Task 2: Application persistence (DB schema + repository)
+**What**: Add `applications` and `application_attempts` tables with repository methods.
 **Files**:
-- `src/persistence/database.py` — add tables to schema, add migration
-- `src/persistence/repository.py` — add ApplicationRepository methods
+- `src/persistence/database.py` — add tables to schema + migration
+- `src/persistence/repository.py` — add ApplicationRepository
 - `tests/unit/test_application_repository.py` (new)
 
 **Repository interface**:
 ```python
 class ApplicationRepository:
-    def create_application(self, job_id: int, ats_platform: str = "") -> int:
-        """Create a new application record. Returns application_id."""
+    def create_application(self, job_id: Optional[int], profile_name: str,
+                           job_url: str, job_title: str = "", company_name: str = "",
+                           ats_platform: str = "", apply_method: str = "cli") -> int:
 
-    def update_application_status(self, app_id: int, status: str,
-                                   failure_reason: str = "", notes: str = ""):
-        """Update application status."""
+    def update_status(self, app_id: int, status: str,
+                      failure_reason: str = "", notes: str = ""):
 
     def log_attempt(self, app_id: int, result: str,
                     error_message: str = "", screenshot_path: str = ""):
-        """Log an application attempt."""
 
-    def get_application_by_job_id(self, job_id: int) -> Optional[dict]:
-        """Get application for a job, if exists."""
+    def get_by_job_id(self, job_id: int) -> Optional[dict]:
 
     def get_pending_jobs(self, limit: int = 10) -> list[dict]:
-        """Get jobs that are NOT_APPLIED and have no application record."""
+        """Jobs that are NOT_APPLIED and have no application record."""
 
-    def get_application_stats(self) -> dict:
-        """Return counts by application status."""
+    def get_stats(self) -> dict:
+        """Counts by status, by profile, by method."""
+
+    def list_applications(self, status: Optional[str] = None,
+                          profile: Optional[str] = None, limit: int = 50) -> list[dict]:
 ```
 
-**Tests**: Insert application, update status, log attempt, get pending jobs, get stats.
-**Acceptance**: Schema creates cleanly on fresh DB and migrates existing DB. All CRUD works.
+**Tests**: CRUD operations, nullable job_id, stats aggregation, pending jobs query.
+**Acceptance**: Schema creates/migrates cleanly. All methods work.
 
 ---
 
-### Task 3: BaseFormFiller interface and filler registry
-**What**: Define the abstract base class for form fillers and the registry that maps ATS platforms to filler classes.
+#### Task 3: BaseFormFiller interface and filler registry
+**What**: Abstract base class for per-ATS Python form fillers + registry.
 **Files**:
+- `src/applier/__init__.py` (new)
 - `src/applier/base.py` (new)
 - `src/applier/registry.py` (new)
-- `src/applier/__init__.py` (new)
 - `tests/unit/test_filler_registry.py` (new)
 
 **Interface**:
 ```python
+@dataclass
 class FillResult:
     success: bool
-    fields_filled: list[str]  # names of fields that were filled
-    fields_skipped: list[str]  # fields that couldn't be filled
-    error: str
+    fields_filled: list[str]
+    fields_skipped: list[str]
+    error: str = ""
 
 class BaseFormFiller(ABC):
     def __init__(self, profile: UserProfile):
         self.profile = profile
 
     @abstractmethod
-    def platform_name(self) -> str:
-        """Return ATS platform name (e.g., 'workday', 'oracle_hcm')."""
+    def platform_name(self) -> str: ...
 
     @abstractmethod
-    def can_handle(self, url: str) -> bool:
-        """Return True if this filler handles the given application URL."""
+    def can_handle(self, url: str) -> bool: ...
 
     @abstractmethod
-    def fill_form(self, page: Page) -> FillResult:
-        """Fill the application form on the current page. Do NOT submit."""
+    def fill_form(self, page: Page) -> FillResult: ...
 
     @abstractmethod
-    def submit(self, page: Page) -> bool:
-        """Click the submit button. Return True if submission appeared successful."""
-```
+    def submit(self, page: Page) -> bool: ...
 
-**Registry**:
-```python
 def get_filler_for_url(url: str, profile: UserProfile) -> Optional[BaseFormFiller]:
-    """Detect ATS platform from URL and return appropriate filler instance."""
-    for filler_class in _FILLER_MAP.values():
-        instance = filler_class(profile)
-        if instance.can_handle(url):
-            return instance
-    return None
+    """Detect ATS from URL, return filler instance."""
 ```
 
-**Tests**: Registry returns correct filler for known URLs, returns None for unknown.
-**Acceptance**: Interface defined, registry works, no actual ATS filling yet.
+**Tests**: Registry lookup, can_handle detection, None for unknown URLs.
+**Acceptance**: Interface compiles, registry works.
 
 ---
 
-### Task 4: Apply orchestrator (CLI → Playwright → filler → confirm)
-**What**: The main apply loop that ties everything together.
+### Phase B: CLI Apply Flow (Task 4, depends on Phase A)
+
+#### Task 4: Apply orchestrator + CLI commands
+**What**: The CLI apply loop: pick job → Playwright headed → fill → confirm in terminal.
 **Files**:
 - `src/applier/orchestrator.py` (new)
-- `src/cli.py` — add `apply` command
+- `src/cli.py` — add `apply`, `apply-stats`, `apply-queue`, `mark-applied`, `list-profiles` commands
 
 **CLI commands**:
 ```bash
-# Apply to a specific job by ID
-python3 -m src.cli apply --job-id 42
-
-# Apply to the next unapplied job
-python3 -m src.cli apply --next
-
-# Apply to next N unapplied jobs (batch mode, still confirms each)
-python3 -m src.cli apply --next --limit 5
-
-# Show application stats
-python3 -m src.cli apply-stats
+python3 -m src.cli apply --job-id 42                      # Apply to specific job
+python3 -m src.cli apply --job-id 42 --profile ai_remote  # With specific profile
+python3 -m src.cli apply --next                            # Next unapplied job
+python3 -m src.cli apply --next --limit 5                  # Next 5 (confirms each)
+python3 -m src.cli apply-queue --limit 20                  # Show apply queue
+python3 -m src.cli apply-stats                             # Application statistics
+python3 -m src.cli applications --status SUBMITTED         # List past applications
+python3 -m src.cli mark-applied --job-id 42                # Mark as manually applied
+python3 -m src.cli list-profiles                           # Show available profiles
 ```
 
 **Orchestrator flow**:
-```python
-class ApplyOrchestrator:
-    def __init__(self, repo, app_repo, profile):
-        ...
+1. Load profile (default: first profile in `config/profiles/`, or `--profile` flag)
+2. Get job from DB
+3. Find filler for job URL (or fail with UNSUPPORTED_ATS)
+4. Launch Playwright headed (`headless=False`)
+5. Navigate to job URL, take before-screenshot
+6. Fill form, take after-screenshot
+7. Print summary to terminal (job title, company, fields filled/skipped)
+8. Prompt: "Submit? [y/n/skip]"
+9. Record result in applications table + update job status
 
-    def apply_to_job(self, job_id: int) -> ApplyResult:
-        job = self.repo.get_by_id(job_id)
-        filler = get_filler_for_url(job.job_link, self.profile)
-
-        if not filler:
-            return ApplyResult(status="UNSUPPORTED_ATS", ...)
-
-        app_id = self.app_repo.create_application(job_id, filler.platform_name())
-
-        with self._headed_browser() as page:
-            page.goto(job.job_link)
-            # Take before screenshot
-            page.screenshot(path=f"data/screenshots/{job_id}_before.png")
-
-            # Fill the form
-            result = filler.fill_form(page)
-
-            # Take after screenshot
-            page.screenshot(path=f"data/screenshots/{job_id}_after.png")
-
-            # Print summary to terminal
-            print(f"Job: {job.job_title} at {job.company_name}")
-            print(f"Fields filled: {result.fields_filled}")
-            print(f"Fields skipped: {result.fields_skipped}")
-
-            # Human confirmation
-            choice = input("Submit? [y/n/skip]: ").strip().lower()
-
-            if choice == 'y':
-                submitted = filler.submit(page)
-                # ... record result
-            elif choice == 'n':
-                # ... record HUMAN_REJECTED
-            else:
-                # ... skip, no status change
-```
-
-**Key detail**: `_headed_browser()` launches Playwright with `headless=False` so user sees the browser.
-
-**Tests**: Mock-based tests for orchestrator flow (filler found/not found, user confirms/rejects/skips).
-**Acceptance**: CLI command works end-to-end with a mock filler. Real ATS filling comes in Tasks 5+.
+**Tests**: Mock-based orchestrator tests. Confirm/reject/skip paths. Filler found/not found.
+**Acceptance**: End-to-end CLI flow works with a mock filler.
 
 ---
 
-### Task 5: Oracle HCM form filler
-**What**: First real ATS filler — handles Oracle HCM (used by JPMorgan, Oracle). This is the highest-value filler (625 jobs).
+### Phase C: Per-ATS Fillers (Tasks 5-6, depend on Phase B)
+
+#### Task 5: Oracle HCM form filler
+**What**: First real ATS filler — handles Oracle HCM (used by JPMorgan, Oracle). Highest-value filler (625 jobs).
 **Files**:
 - `src/applier/oracle_hcm.py` (new)
 - `tests/unit/test_oracle_hcm_filler.py` (new)
@@ -450,9 +408,8 @@ class ApplyOrchestrator:
 - Upload resume via file input
 - Stop before submit (human reviews)
 
-**Selectors to use** (Oracle HCM is standardized):
+**Selectors** (Oracle HCM is standardized):
 ```python
-# These are common Oracle HCM selectors — verify during implementation
 "input[aria-label*='First']"       # First name
 "input[aria-label*='Last']"        # Last name
 "input[aria-label*='Email']"       # Email
@@ -463,12 +420,12 @@ class ApplyOrchestrator:
 ```
 
 **Tests**: Unit tests with mocked Page object for field detection and filling logic.
-**Acceptance**: Can fill an Oracle HCM application form on JPMorgan or Oracle careers. User sees filled form and confirms.
+**Acceptance**: Can fill an Oracle HCM application form on JPMorgan or Oracle careers.
 
 ---
 
-### Task 6: Workday form filler
-**What**: Second ATS filler — handles Workday (used by Nasdaq, and many other companies).
+#### Task 6: Workday form filler
+**What**: Second ATS filler — handles Workday (used by Nasdaq + many other companies).
 **Files**:
 - `src/applier/workday.py` (new)
 - `tests/unit/test_workday_filler.py` (new)
@@ -495,7 +452,9 @@ class ApplyOrchestrator:
 
 ---
 
-### Task 7: ATS URL detection and apply-link resolution
+### Phase D: Polish (Tasks 7-8, depend on Phase B)
+
+#### Task 7: ATS URL detection and apply-link resolution
 **What**: Many jobs in our DB have listing-page links, not application-page links. We need to resolve the actual "Apply" URL.
 **Files**:
 - `src/applier/url_resolver.py` (new)
@@ -514,15 +473,12 @@ class ApplyUrlResolver:
         """Navigate to job_link, find and click Apply button.
         Returns True if we landed on an application form."""
         page.goto(job_link, wait_until="domcontentloaded")
-
-        # Try common "Apply" button selectors
         apply_selectors = [
             "button:has-text('Apply')",
             "a:has-text('Apply')",
             "button:has-text('Apply Now')",
             "a:has-text('Apply Now')",
             "[data-automation-id='apply']",
-            # ... ATS-specific selectors
         ]
         for sel in apply_selectors:
             btn = page.query_selector(sel)
@@ -534,61 +490,51 @@ class ApplyUrlResolver:
 ```
 
 **Tests**: Mock-based tests for button detection.
-**Acceptance**: Resolver finds Apply button on job detail pages for Oracle HCM and Workday.
+**Acceptance**: Resolver finds Apply button on Oracle HCM and Workday job detail pages.
 
 ---
 
-### Task 8: Apply-stats CLI and application review commands
-**What**: CLI commands to view application progress and manage the apply queue.
+#### Task 8: Apply-stats CLI and run-commands update
+**What**: Ensure all apply-related CLI commands work and update run-commands.md.
 **Files**:
-- `src/cli.py` — add commands
-- Update `docs/run-commands.md`
+- `src/cli.py` — verify all commands from Task 4
+- `docs/run-commands.md` — add v2 commands section
 
-**Commands**:
-```bash
-# View application statistics
-python3 -m src.cli apply-stats
-
-# List jobs ready to apply (NOT_APPLIED, no application record)
-python3 -m src.cli apply-queue --limit 20
-
-# List past applications with status
-python3 -m src.cli applications --status SUBMITTED
-python3 -m src.cli applications --status FAILED
-
-# Mark a job as manually applied (e.g., user applied outside the system)
-python3 -m src.cli mark-applied --job-id 42
-```
-
-**Tests**: CLI arg parsing, output formatting.
-**Acceptance**: User can see apply queue, past applications, and stats.
+**Acceptance**: User can see apply queue, past applications, stats, and available profiles.
 
 ---
 
-## Task Dependency Order
+## Task Dependency Graph
 
 ```
-Task 1 (UserProfile)  ──┐
-                         ├──→ Task 4 (Orchestrator + CLI) ──→ Task 5 (Oracle HCM filler)
-Task 2 (Application DB) ─┤                                 → Task 6 (Workday filler)
-                         │
-Task 3 (Filler interface)┘
-                                Task 7 (URL resolver) — can be built alongside Task 5/6
-                                Task 8 (CLI stats)     — can be built alongside Task 5/6
+Phase A (parallel):
+  Task 1 (UserProfile)  ──┐
+  Task 2 (Application DB) ─┼──→ Phase B: Task 4 (CLI Orchestrator)
+  Task 3 (Filler base)  ──┘         │
+                                     ├──→ Phase C: Task 5 (Oracle HCM filler)
+                                     │              Task 6 (Workday filler)
+                                     └──→ Phase D: Task 7 (URL resolver)
+                                                    Task 8 (CLI polish + docs)
 ```
 
-**Build order**: Tasks 1, 2, 3 can be built in parallel. Task 4 depends on all three. Tasks 5-8 depend on Task 4.
+**Build order for Sonnet:**
+1. Tasks 1, 2, 3 (parallel, no dependencies)
+2. Task 4 (CLI orchestrator — core flow)
+3. Tasks 5, 6 (per-ATS fillers — make it actually useful)
+4. Tasks 7, 8 (polish)
+
+---
 
 ## Implementation Notes for Sonnet
 
 ### General
-- Follow existing patterns: look at `src/scrapers/base.py` for the adapter pattern, `src/persistence/repository.py` for DB access patterns, `src/cli.py` for CLI patterns.
+- Follow existing patterns: `src/scrapers/base.py` for adapters, `src/persistence/repository.py` for DB, `src/cli.py` for CLI.
 - Use TDD: write tests first, then implement.
-- Use `python3` not `python` in all commands.
-- Activate venv before running anything: `source .venv/bin/activate`
+- Use `python3` not `python`. Activate venv first: `source .venv/bin/activate`
 - All Playwright usage should follow the pattern in `src/scrapers/playwright_base.py`.
 - Keep functions small. Log errors with enough context.
 - Do not add features beyond what the task specifies.
+- Commit and push after completing each task.
 
 ### Testing
 - Mock Playwright Page objects in unit tests — don't launch real browsers in tests.
@@ -596,19 +542,16 @@ Task 3 (Filler interface)┘
 - Unit tests should run fast (<1s).
 
 ### Important constraints
-- v2 is ONE UserProfile only. Do not build multi-profile support.
 - Human-in-the-loop is REQUIRED. Never auto-submit without terminal confirmation.
 - When a form can't be filled (login wall, CAPTCHA, unsupported ATS): fail gracefully, record the reason, move on.
 - Screenshots go in `data/screenshots/` — add this to `.gitignore`.
-- `config/user_profile.yaml` contains PII — must be in `.gitignore`.
+- `config/profiles/*.yaml` contains PII — must be in `.gitignore` (except `example.yaml`).
 
 ### What NOT to build in v2
-- Account creation on ATS platforms
+- Account creation on ATS platforms (deferred to v2.1)
 - Cover letter generation
-- Multi-profile support
 - Autopilot (zero-click) mode
-- Chrome extension
-- Local HTTP API server
+- Chrome extension or local API server (built separately)
 - Job scoring or ranking
 - Email tracking / outcome monitoring
 
@@ -617,11 +560,193 @@ Task 3 (Filler interface)┘
 ## Acceptance Criteria for v2
 
 v2 is done when:
-1. User can run `python3 -m src.cli apply --next` and see a visible browser fill a real application form
+1. `python3 -m src.cli apply --next` opens a visible browser and fills a real application form
 2. User reviews the filled form and confirms/rejects in terminal
 3. Application status is recorded in the database
 4. At least Oracle HCM and Workday ATS platforms are supported
 5. Unsupported ATS platforms fail gracefully with a clear message
-6. `apply-stats` and `apply-queue` CLI commands work
-7. Screenshots are captured for debugging
-8. All unit tests pass
+6. Multiple UserProfiles work (different YAML files, selectable via `--profile`)
+7. `apply-stats`, `apply-queue`, and `list-profiles` CLI commands work
+8. Screenshots are captured for debugging
+9. All unit tests pass
+
+---
+
+## Appendix: Independent Chrome Extension Build Spec
+
+This section describes a standalone Chrome extension that reads a YAML-format UserProfile and auto-fills job application forms. It is built independently of the Python codebase above.
+
+### Purpose
+A Chrome Manifest V3 extension that:
+1. Lets the user load/select a UserProfile (from a YAML file or pasted YAML text)
+2. On any job application page, fills visible form fields using the selected profile
+3. Does NOT submit — the user always reviews and submits manually
+
+### Extension structure
+```
+job-autofiller-extension/
+├── manifest.json
+├── popup.html
+├── popup.js
+├── popup.css
+├── content.js
+├── field_map.js
+├── yaml_parser.js       (lightweight YAML parser, e.g., js-yaml via CDN or bundled)
+└── icons/
+    ├── icon16.png
+    ├── icon48.png
+    └── icon128.png
+```
+
+### manifest.json
+```json
+{
+  "manifest_version": 3,
+  "name": "Job Application Autofiller",
+  "version": "0.1.0",
+  "description": "Auto-fill job application forms from a YAML profile",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon48.png"
+  }
+}
+```
+
+Note: No `content_scripts` in manifest — inject via `chrome.scripting.executeScript` on demand (only when user clicks "Fill"). This avoids injecting into every page.
+
+### UserProfile YAML schema
+Same schema as the Python codebase (see section 2 above). The extension parses this YAML client-side.
+
+### Popup UI (`popup.html` + `popup.js`)
+
+**Layout:**
+1. **Profile selector**: Dropdown of saved profiles (stored in `chrome.storage.local`)
+2. **Import button**: "Import Profile" — opens a file picker for a `.yaml` file, parses it, saves to storage
+3. **Profile summary**: Shows the selected profile's key fields (name, email, resume filename) so user can quickly verify which profile is active
+4. **"Fill Form" button**: Injects content script into the active tab and sends profile data
+5. **Status area**: After fill, shows "Filled X fields, skipped Y fields"
+6. **"Delete Profile" link**: Removes the selected profile from storage
+
+**Profile storage:**
+```javascript
+// Save parsed profile to chrome.storage.local
+chrome.storage.local.set({
+  profiles: {
+    backend_mumbai: { profile_name: "Backend Mumbai", first_name: "Srini", ... },
+    ai_remote: { profile_name: "AI Remote", first_name: "Srini", ... }
+  },
+  active_profile: "backend_mumbai"
+});
+```
+
+### Content script (`content.js`)
+
+**Injected on demand** when user clicks "Fill Form":
+```javascript
+chrome.scripting.executeScript({
+  target: { tabId: activeTab.id },
+  files: ['field_map.js', 'content.js']
+});
+```
+
+Then send profile data via messaging:
+```javascript
+chrome.tabs.sendMessage(activeTab.id, {
+  action: 'fill',
+  profile: selectedProfileData
+});
+```
+
+### Field mapping (`field_map.js`)
+
+Generic label-matching approach:
+```javascript
+const FIELD_MAP = [
+  { patterns: [/first\s*name/i, /given\s*name/i, /fname/i], field: 'first_name' },
+  { patterns: [/last\s*name/i, /family\s*name/i, /surname/i, /lname/i], field: 'last_name' },
+  { patterns: [/e-?mail/i], field: 'email' },
+  { patterns: [/phone/i, /mobile/i, /tel(?:ephone)?/i], field: 'phone' },
+  { patterns: [/city/i, /town/i], field: 'city' },
+  { patterns: [/state/i, /province/i, /region/i], field: 'state' },
+  { patterns: [/country/i], field: 'country' },
+  { patterns: [/zip/i, /postal/i, /pin\s*code/i], field: 'zip_code' },
+  { patterns: [/linkedin/i], field: 'linkedin_url' },
+  { patterns: [/github/i], field: 'github_url' },
+  { patterns: [/portfolio/i, /website/i, /personal.*url/i], field: 'portfolio_url' },
+  { patterns: [/years?\s*(of\s*)?exp/i], field: 'years_of_experience' },
+  { patterns: [/current\s*(company|employer)/i], field: 'current_company' },
+  { patterns: [/current\s*(title|position|role)/i], field: 'current_title' },
+  { patterns: [/notice\s*period/i], field: 'notice_period_days' },
+  { patterns: [/degree/i], field: 'degree' },
+  { patterns: [/major|field\s*of\s*study/i], field: 'major' },
+  { patterns: [/university|school|college|institution/i], field: 'university' },
+  { patterns: [/graduat/i, /year.*complet/i], field: 'graduation_year' },
+];
+```
+
+### Label detection logic
+
+For each `<input>`, `<textarea>`, `<select>` on the page:
+1. Check `<label for="id">` association
+2. Check `aria-label` attribute
+3. Check `placeholder` attribute
+4. Check `name` attribute
+5. Walk up the DOM to find nearest text node (handles cases like `<div><span>First Name</span><input/></div>`)
+6. Match the found label text against FIELD_MAP patterns
+
+### Value setting (React/Angular/Vue compatible)
+
+Must dispatch proper events so SPA frameworks register the change:
+```javascript
+function setInputValue(input, value) {
+  // Use native setter to bypass React's synthetic event system
+  const nativeSet = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype, 'value'
+  ).set;
+  nativeSet.call(input, String(value));
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  input.dispatchEvent(new Event('blur', { bubbles: true }));
+}
+```
+
+For `<select>` elements: find the `<option>` whose text best matches the profile value, set `selectedIndex`, dispatch `change`.
+
+For `<textarea>`: same as input but use `HTMLTextAreaElement.prototype`.
+
+### Dropdowns that aren't real `<select>` elements
+
+Many ATS platforms use custom dropdown components (React Select, Material UI, etc.). For these:
+1. Click the dropdown trigger to open it
+2. Look for the options list that appears
+3. Find the option matching the profile value
+4. Click it
+
+This is harder to make generic. For v1 of the extension, skip these and show them in "skipped fields". The user fills them manually.
+
+### Resume upload
+
+The extension CANNOT auto-upload files from a path (browser security). Instead:
+- Detect `<input type="file">` on the page
+- Show in the popup: "Resume to upload: backend_resume.pdf (from ~/path/to/resume)"
+- The user clicks the file input and selects the file manually
+
+### What the extension does NOT do
+- Auto-submit (user always clicks submit themselves)
+- Handle multi-page wizards automatically (user navigates pages, clicks "Fill" on each)
+- Handle CAPTCHA or login walls
+- Communicate with any backend server (fully standalone)
+- Track applications in a database (it's a pure form-filler)
+
+### Testing
+- Load unpacked in Chrome: `chrome://extensions` → Developer mode → Load unpacked
+- Test on real application pages: Workday, Oracle HCM, Greenhouse, Lever, SmartRecruiters
+- Verify field filling + event dispatching (check that the form's internal state updates, not just visual)
+
+### Future integration with JobSearchAutomater
+When this extension is later integrated with the main Python project:
+- Add a FastAPI local server (`localhost:8787`) that serves profiles and logs applications
+- Extension calls the API instead of using `chrome.storage.local`
+- Application tracking flows into the shared SQLite database
+- This is a v2.1+ concern, not needed for the standalone extension
