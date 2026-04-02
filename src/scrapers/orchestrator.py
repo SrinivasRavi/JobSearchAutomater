@@ -99,4 +99,5 @@ class ScrapeOrchestrator:
             application_status=ApplicationStatus.NOT_APPLIED,
             source_type=SourceType.CAREER_PAGE,
             source_name=source_name,
+            location=raw.location,
         )

@@ -73,6 +73,14 @@ class TestJob:
         assert d["source_type"] == "CAREER_PAGE"
         assert "scraped_timestamp" in d
 
+    def test_location_defaults_to_empty(self):
+        job = self._make_job()
+        assert job.location == ""
+
+    def test_location_stored(self):
+        job = self._make_job(location="Mumbai, India")
+        assert job.location == "Mumbai, India"
+
     def test_job_clean_link_is_dedupe_key(self):
         job = self._make_job()
         assert job.dedupe_key == job.clean_job_link

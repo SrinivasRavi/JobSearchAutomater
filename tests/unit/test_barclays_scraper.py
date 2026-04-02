@@ -40,7 +40,9 @@ class TestParseBarclaysHtml:
         assert jobs[0].company_name == "Barclays"
         assert jobs[0].job_title == "Software Engineer"
         assert "search.jobs.barclays" in jobs[0].job_link
+        assert jobs[0].location == "Mumbai, India"
         assert jobs[1].job_title == "Senior Software Engineer"
+        assert jobs[1].location == "Pune, India"
 
     def test_empty_html(self):
         jobs = _parse_jobs_from_html(EMPTY_HTML, "https://search.jobs.barclays")

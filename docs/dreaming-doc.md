@@ -981,6 +981,9 @@ The scraper is a CLI tool triggered by macOS launchd (or cron). No long-running 
 - **CLI with JSON output:** Callable from n8n "Execute Command" nodes, cron, or shell scripts.
 - **Local HTTP API (v2):** A thin FastAPI layer on top of the same repository. The Chrome extension and any external tool become API clients.
 
+### Profile vs UserProfile
+The current `--profile` flag (mumbai, pune) is a one-time shortcut for v1: it swaps the location in search URLs. It is **not** a generic UserProfile system. In v2, UserProfile will be a richer concept — resume, preferences, skills, location, experience level, visa status, etc. — and the scraper will use it to parameterize searches, score matches, and fill applications. The v1 profile mechanism will be replaced, not extended.
+
 ### v2 Chrome extension interface
 The extension communicates with a local HTTP API:
 - `GET /api/next-job?status=APPLY_READY` → returns job + UserProfile fields

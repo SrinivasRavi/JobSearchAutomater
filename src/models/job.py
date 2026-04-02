@@ -17,6 +17,7 @@ class Job:
     application_status: ApplicationStatus
     source_type: SourceType
     source_name: str
+    location: str = ""
     posted_timestamp: Optional[datetime] = None
     job_id: Optional[int] = None
 

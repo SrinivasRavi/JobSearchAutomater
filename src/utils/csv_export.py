@@ -8,6 +8,7 @@ COLUMNS = [
     "job_id",
     "company_name",
     "job_title",
+    "location",
     "job_link",
     "clean_job_link",
     "posted_timestamp",

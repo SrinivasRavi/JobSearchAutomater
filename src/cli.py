@@ -124,7 +124,9 @@ def cmd_query(args, repo):
 
     print(f"\nShowing {len(jobs)} job(s):\n")
     for job in jobs:
+        loc = f" | {job.location}" if job.location else ""
         print(f"  [{job.job_id:4d}] {job.company_name:20s} | {job.job_title[:50]:50s} | {job.application_status.value}")
+        print(f"         {job.location or 'N/A'}")
         print(f"         {job.clean_job_link}")
         print()
 

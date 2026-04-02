@@ -19,7 +19,7 @@ class JobRepository:
             cursor = conn.execute(
                 "INSERT INTO jobs (company_name, job_title, job_description, job_link, "
                 "clean_job_link, posted_timestamp, scraped_timestamp, application_status, "
-                "source_type, source_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "source_type, source_name, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     job.company_name,
                     job.job_title,
@@ -31,6 +31,7 @@ class JobRepository:
                     job.application_status.value,
                     job.source_type.value,
                     job.source_name,
+                    job.location,
                 ),
             )
             conn.commit()
@@ -166,4 +167,5 @@ class JobRepository:
             application_status=ApplicationStatus(row["application_status"]),
             source_type=SourceType(row["source_type"]),
             source_name=row["source_name"],
+            location=row["location"],
         )

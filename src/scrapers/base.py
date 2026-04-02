@@ -12,6 +12,7 @@ class RawJob:
     job_title: str
     job_description: str
     job_link: str
+    location: str = ""
     posted_timestamp: Optional[datetime] = None
 
 

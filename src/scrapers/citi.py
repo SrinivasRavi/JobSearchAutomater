@@ -42,6 +42,7 @@ def _parse_jobs_from_html(html: str, base_url: str) -> list[RawJob]:
             job_title=title,
             job_description=description,
             job_link=job_link,
+            location=location,
         ))
 
     return jobs

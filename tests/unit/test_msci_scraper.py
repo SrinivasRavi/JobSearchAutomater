@@ -42,6 +42,7 @@ class TestParseMsciResponse:
         assert jobs[0].company_name == "MSCI"
         assert jobs[0].job_title == "Software Developer"
         assert "careers.msci.com" in jobs[0].job_link
+        assert jobs[0].location == "Mumbai, India"
 
     def test_empty_response(self):
         jobs = _parse_jobs_from_response({"hits": [], "nbHits": 0})

@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     scraped_timestamp TEXT NOT NULL,
     application_status TEXT NOT NULL DEFAULT 'NOT_APPLIED',
     source_type TEXT NOT NULL,
-    source_name TEXT NOT NULL
+    source_name TEXT NOT NULL,
+    location TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_name);
@@ -57,12 +58,22 @@ class Database:
         self._connection.execute("PRAGMA foreign_keys=ON")
         self._connection.row_factory = sqlite3.Row
         self._connection.executescript(_SCHEMA_SQL)
+        self._migrate()
 
     @property
     def connection(self) -> sqlite3.Connection:
         if self._connection is None:
             raise RuntimeError("Database not initialized. Call initialize() first.")
         return self._connection
+
+    def _migrate(self):
+        """Apply incremental schema migrations for existing databases."""
+        conn = self._connection
+        cursor = conn.execute("PRAGMA table_info(jobs)")
+        columns = {row[1] for row in cursor.fetchall()}
+        if "location" not in columns:
+            conn.execute("ALTER TABLE jobs ADD COLUMN location TEXT NOT NULL DEFAULT ''")
+            conn.commit()
 
     def close(self):
         if self._connection:

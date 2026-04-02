@@ -56,7 +56,7 @@ class TestCsvExport:
         reader = csv.DictReader(output)
         row = next(reader)
         expected_cols = {
-            "job_id", "company_name", "job_title", "job_link",
+            "job_id", "company_name", "job_title", "location", "job_link",
             "clean_job_link", "posted_timestamp", "scraped_timestamp",
             "application_status", "source_type", "source_name",
         }

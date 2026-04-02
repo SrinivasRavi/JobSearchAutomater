@@ -48,6 +48,7 @@ class TestParseJobsFromResponse:
         assert jobs[0].job_title == "Software Development Engineer"
         assert "Design and build" in jobs[0].job_description
         assert "amazon.jobs" in jobs[0].job_link
+        assert jobs[0].location == "Mumbai, Maharashtra, IND"
 
     def test_empty_response(self):
         jobs = _parse_jobs_from_response(EMPTY_API_RESPONSE)

@@ -43,6 +43,7 @@ class TestParseVisaResponse:
         assert jobs[0].company_name == "Visa"
         assert jobs[0].job_title == "Software Engineer"
         assert "smartrecruiters.com/Visa/" in jobs[0].job_link
+        assert jobs[0].location == "Mumbai, Maharashtra, India"
 
     def test_empty_response(self):
         jobs = _parse_jobs_from_response({"totalFound": 0, "content": []})

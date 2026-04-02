@@ -38,6 +38,7 @@ def _parse_jobs_from_response(data: dict) -> list[RawJob]:
             job_title=title,
             job_description=f"{title} - {location_str}" if location_str else title,
             job_link=uri,
+            location=location_str,
         ))
     return jobs
 

@@ -24,11 +24,14 @@ def _parse_jobs_from_response(data: dict) -> list[RawJob]:
         else:
             job_link = item.get("url_next_step", job_path)
 
+        location = item.get("location", "")
+
         jobs.append(RawJob(
             company_name=item.get("company_name", "Amazon"),
             job_title=item.get("title", ""),
             job_description=item.get("description_short", ""),
             job_link=job_link,
+            location=location,
         ))
     return jobs
 

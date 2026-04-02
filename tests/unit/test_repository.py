@@ -170,14 +170,14 @@ class TestDatabaseSchema:
         now = datetime.now(timezone.utc).isoformat()
         conn.execute(
             "INSERT INTO jobs (company_name, job_title, job_description, job_link, "
-            "clean_job_link, scraped_timestamp, application_status, source_type, source_name) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("A", "B", "C", "http://x.com/1?r=1", "http://x.com/1", now, "NOT_APPLIED", "CAREER_PAGE", "test"),
+            "clean_job_link, scraped_timestamp, application_status, source_type, source_name, location) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("A", "B", "C", "http://x.com/1?r=1", "http://x.com/1", now, "NOT_APPLIED", "CAREER_PAGE", "test", "Mumbai"),
         )
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
                 "INSERT INTO jobs (company_name, job_title, job_description, job_link, "
-                "clean_job_link, scraped_timestamp, application_status, source_type, source_name) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                ("A", "B", "C", "http://x.com/1?r=2", "http://x.com/1", now, "NOT_APPLIED", "CAREER_PAGE", "test"),
+                "clean_job_link, scraped_timestamp, application_status, source_type, source_name, location) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("A", "B", "C", "http://x.com/1?r=2", "http://x.com/1", now, "NOT_APPLIED", "CAREER_PAGE", "test", "Mumbai"),
             )
