@@ -2,38 +2,42 @@
 
 All commands should be run from the project root (`/Users/srinivasravi/dev/JobSearchAutomater`).
 
-## Setup
+**IMPORTANT**: Always activate the virtual environment first before running any command:
+
+```bash
+source .venv/bin/activate
+```
+
+## First-time Setup
 
 ```bash
 # Create virtual environment (one-time)
 python3 -m venv .venv
-
-# Activate it
 source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Install Playwright browsers (one-time, needed for Goldman Sachs, Google, BofA, Microsoft scrapers)
-python -m playwright install chromium
+python3 -m playwright install chromium
 ```
 
 ## Scraping
 
 ```bash
 # Scrape all enabled sources (Mumbai profile, default)
-python -m src.cli scrape
+python3 -m src.cli scrape
 
 # Scrape a specific source
-python -m src.cli scrape --source amazon
-python -m src.cli scrape --source jpmorgan
-python -m src.cli scrape --source google
+python3 -m src.cli scrape --source amazon
+python3 -m src.cli scrape --source jpmorgan
+python3 -m src.cli scrape --source google
 
 # Scrape using Pune profile
-python -m src.cli scrape --profile pune
+python3 -m src.cli scrape --profile pune
 
 # Scrape a single source in Pune
-python -m src.cli scrape --profile pune --source barclays
+python3 -m src.cli scrape --profile pune --source barclays
 ```
 
 ### Available sources (Mumbai)
@@ -63,55 +67,55 @@ python -m src.cli scrape --profile pune --source barclays
 
 ```bash
 # View job stats (count by company, source, status)
-python -m src.cli stats
+python3 -m src.cli stats
 
 # Browse jobs (most recent first)
-python -m src.cli query
+python3 -m src.cli query
 
 # Filter by company
-python -m src.cli query --company Google
+python3 -m src.cli query --company Google
 
 # Filter by source
-python -m src.cli query --source jpmorgan
+python3 -m src.cli query --source jpmorgan
 
 # Limit results
-python -m src.cli query --limit 5
+python3 -m src.cli query --limit 5
 
 # JSON output
-python -m src.cli query --json
+python3 -m src.cli query --json
 ```
 
 ## Export
 
 ```bash
 # Export all jobs to CSV (stdout)
-python -m src.cli export
+python3 -m src.cli export
 
 # Export to file
-python -m src.cli export --output jobs.csv
+python3 -m src.cli export --output jobs.csv
 ```
 
 ## History
 
 ```bash
 # View recent scrape runs
-python -m src.cli runs
+python3 -m src.cli runs
 
 # List available profiles
-python -m src.cli profiles
+python3 -m src.cli profiles
 ```
 
 ## Testing
 
 ```bash
 # Run all unit tests
-python -m pytest tests/unit/ -v
+python3 -m pytest tests/unit/ -v
 
 # Run tests for a specific adapter
-python -m pytest tests/unit/test_jpmorgan_scraper.py -v
+python3 -m pytest tests/unit/test_jpmorgan_scraper.py -v
 
 # Run with coverage
-python -m pytest tests/unit/ --cov=src --cov-report=term-missing
+python3 -m pytest tests/unit/ --cov=src --cov-report=term-missing
 ```
 
 ## Database
@@ -119,8 +123,8 @@ python -m pytest tests/unit/ --cov=src --cov-report=term-missing
 The SQLite database is stored at `data/jobs.db` by default. You can override it:
 
 ```bash
-python -m src.cli scrape --db data/custom.db
-python -m src.cli stats --db data/custom.db
+python3 -m src.cli scrape --db data/custom.db
+python3 -m src.cli stats --db data/custom.db
 ```
 
 To reset the database, just delete the file:
