@@ -31,30 +31,44 @@ profiles:
         company: MSCI
         url: "https://careers.msci.com/job-search?production__mscicare2201__sort-rank%5Bquery%5D=Developer&production__mscicare2201__sort-rank%5BrefinementList%5D%5Btown_city_country%5D%5B0%5D=Mumbai%20%7C%20India"
 
-      # --- Sources without working adapters (v1.1) ---
-      - name: bank_of_america
-        company: Bank of America
-        url: "https://careers.bankofamerica.com/en-us/job-search?ref=search&search=jobsByLocation&rows=10&start=0&keywords=software+engineer&sort=newest&searchstring=Mumbai%2C+India"
-        enabled: false
+      # --- v1.1 HTTP adapters (newly working) ---
+      - name: morningstar
+        company: Morningstar
+        url: "https://careers.morningstar.com/us/en/c/product-development-jobs"
 
       - name: jpmorgan
         company: JPMorganChase
         url: "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs?keyword=Software+Engineer&location=Mumbai%2C+Maharashtra%2C+India&locationId=300000081151360&locationLevel=city&mode=location&radius=25&radiusUnit=MI&sortBy=POSTING_DATES_DESC"
-        enabled: false
 
-      - name: morgan_stanley
-        company: Morgan Stanley
-        url: "https://morganstanley.eightfold.ai/careers?source=mscom&query=Software+Engineer&start=0&pid=549795890684&sort_by=relevance&filter_businessarea=technology&filter_employmenttype=full+time&filter_city=Mumbai"
-        enabled: false
+      - name: nasdaq
+        company: Nasdaq
+        url: "https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site?q=software%20engineer&Location_Country=c4f78be1a8f14da0ab49ce1162348a5e&locations=84ab8350a70e10019c78e4295b9b0000&locations=b638d7611d08100143bd56aa78670000&timeType=c5d5bf172e3c019da4ea33754c384e00"
+
+      - name: oracle
+        company: Oracle
+        url: "https://careers.oracle.com/en/sites/jobsearch/jobs?keyword=software+developer&location=MUMBAI%2C+MAHARASHTRA%2C+India&locationId=300001842985413&locationLevel=city&mode=location&radius=25&radiusUnit=MI"
+
+      # --- Playwright adapters (browser-rendered SPAs) ---
+      - name: goldman_sachs
+        company: Goldman Sachs
+        url: "https://higher.gs.com/results?JOB_FUNCTION=Software%20Engineering&LOCATION=India&page=1&sort=RELEVANCE"
 
       - name: google
         company: Google
         url: "https://www.google.com/about/careers/applications/jobs/results/?location=Mumbai%2C%20India&employment_type=FULL_TIME&skills=engineer"
-        enabled: false
 
-      - name: goldman_sachs
-        company: Goldman Sachs
-        url: "https://higher.gs.com/results?JOB_FUNCTION=Software%20Engineering&LOCATION=Mumbai&page=1&sort=RELEVANCE"
+      - name: bofa
+        company: Bank of America
+        url: "https://careers.bankofamerica.com/en-us/job-search?ref=search&search=jobsByLocation&rows=10&start=0&keywords=software+engineer&sort=newest&searchstring=Mumbai%2C+India"
+
+      - name: microsoft
+        company: Microsoft
+        url: "https://apply.careers.microsoft.com/careers?query=Software+Development&start=0&location=India%2C+Maharashtra%2C+Mumbai&pid=1970393556842859&sort_by=relevance&filter_distance=160&filter_include_remote=1"
+
+      # --- Blocked (anti-bot / auth required) — disabled ---
+      - name: morgan_stanley
+        company: Morgan Stanley
+        url: "https://morganstanley.eightfold.ai/careers?source=mscom&query=Software+Engineer&start=0&pid=549795890684&sort_by=relevance&filter_businessarea=technology&filter_employmenttype=full+time&filter_city=Mumbai"
         enabled: false
 
       - name: deutsche_bank
@@ -75,26 +89,6 @@ profiles:
       - name: sp_global
         company: S&P Global
         url: "https://careers.spglobal.com/jobs?keywords=software%20engineer&location=mumbai&stretch=10&stretchUnit=MILES&sortBy=relevance&page=1"
-        enabled: false
-
-      - name: morningstar
-        company: Morningstar
-        url: "https://careers.morningstar.com/us/en/c/product-development-jobs"
-        enabled: false
-
-      - name: nasdaq
-        company: Nasdaq
-        url: "https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site?q=software%20engineer&Location_Country=c4f78be1a8f14da0ab49ce1162348a5e&locations=84ab8350a70e10019c78e4295b9b0000&locations=b638d7611d08100143bd56aa78670000&timeType=c5d5bf172e3c019da4ea33754c384e00"
-        enabled: false
-
-      - name: oracle
-        company: Oracle
-        url: "https://careers.oracle.com/en/sites/jobsearch/jobs?keyword=software+developer&location=MUMBAI%2C+MAHARASHTRA%2C+India&locationId=300001842985413&locationLevel=city&mode=location&radius=25&radiusUnit=MI"
-        enabled: false
-
-      - name: microsoft
-        company: Microsoft
-        url: "https://apply.careers.microsoft.com/careers?query=Software+Development&start=0&location=India%2C+Maharashtra%2C+Mumbai&pid=1970393556842859&sort_by=relevance&filter_distance=160&filter_include_remote=1"
         enabled: false
 
   pune:

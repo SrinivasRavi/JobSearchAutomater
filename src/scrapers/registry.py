@@ -76,6 +76,14 @@ def _import_adapters():
         "src.scrapers.deutsche_bank",
         "src.scrapers.visa",
         "src.scrapers.msci",
+        "src.scrapers.morningstar",
+        "src.scrapers.goldman_sachs",
+        "src.scrapers.jpmorgan",
+        "src.scrapers.oracle_careers",
+        "src.scrapers.microsoft",
+        "src.scrapers.nasdaq",
+        "src.scrapers.bofa",
+        "src.scrapers.google",
     ]:
         try:
             __import__(module)

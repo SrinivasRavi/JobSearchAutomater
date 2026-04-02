@@ -277,3 +277,66 @@ Add multi-profile support (Mumbai + Pune), enhance CLI with query/runs/profiles 
 ### Next recommended task
 - User to validate full workflow and data quality
 - After satisfaction: set up Playwright for hard sources, or move to v1.1 planning
+
+---
+
+### Date
+2026-04-02
+
+### Task
+v1.1 — 8 new adapters: HTTP APIs + Playwright scrapers, location field, run-commands doc
+
+### Goal
+Expand scraper coverage from 7 to 14 working sources by adding 4 HTTP API adapters and 4 Playwright browser-based adapters. Add `location` field to jobs. Create user-facing run commands reference.
+
+### Files changed
+- `src/scrapers/playwright_base.py` — NEW: PlaywrightScraper base class with browser lifecycle
+- `src/scrapers/morningstar.py` — NEW: Phenom People platform (phApp.ddo JS data extraction)
+- `src/scrapers/jpmorgan.py` — NEW: Oracle HCM REST API adapter
+- `src/scrapers/nasdaq.py` — NEW: Workday CXS REST API adapter
+- `src/scrapers/oracle_careers.py` — NEW: Oracle HCM REST API adapter
+- `src/scrapers/goldman_sachs.py` — NEW: Playwright adapter for higher.gs.com
+- `src/scrapers/google.py` — NEW: Playwright adapter for Google Careers SPA
+- `src/scrapers/bofa.py` — NEW: Playwright adapter for Bank of America (Adobe AEM)
+- `src/scrapers/microsoft.py` — NEW: Playwright adapter for Microsoft (Eightfold)
+- `src/scrapers/base.py` — Added `location` field to RawJob
+- `src/models/job.py` — Added `location` field to Job
+- `src/persistence/database.py` — Schema migration for location column
+- `src/persistence/repository.py` — Insert/read location field
+- `src/scrapers/orchestrator.py` — Pass location through normalization
+- `src/scrapers/registry.py` — Added 8 new adapter imports
+- `src/utils/csv_export.py` — Added location to CSV columns
+- `src/cli.py` — Show location in query output
+- `config/sources.yaml` — Enabled 8 new sources, disabled 5 blocked sources
+- `requirements.txt` — Added playwright dependency
+- `docs/run-commands.md` — NEW: user-facing command reference
+- All 7 existing adapters updated to populate location field
+- 3 new test files: test_jpmorgan_scraper.py (7 tests), test_nasdaq_scraper.py (7 tests), test_oracle_scraper.py (5 tests)
+- Existing tests updated for location field
+
+### What changed
+- **4 HTTP API adapters**: Morningstar (Phenom phApp.ddo → json.raw_decode), JPMorgan (Oracle HCM API), Nasdaq (Workday CXS POST API), Oracle (Oracle HCM API)
+- **4 Playwright adapters**: Goldman Sachs (higher.gs.com), Google (li.lLd3Je), BofA (job-result cards), Microsoft (Eightfold positions)
+- **PlaywrightScraper base**: manages browser lifecycle (launch → context → page → cleanup), headless Chromium
+- **Location field**: added to RawJob, Job, DB schema (with migration), CSV export, CLI
+- **Goldman Sachs URL fix**: Mumbai filter returned 0 results, changed to LOCATION=India (273 jobs)
+- **Morningstar JSON fix**: regex-based extraction failed on large phApp.ddo objects, switched to json.JSONDecoder.raw_decode
+
+### Decisions made
+- Reclassified 4 sources from Playwright to HTTP-only after discovering their APIs (Morningstar phApp.ddo, JPMorgan/Oracle HCM REST, Nasdaq Workday CXS)
+- 5 sources permanently disabled: Morgan Stanley (reCAPTCHA), UBS (login+CAPTCHA), BNP Paribas (WAF 403), S&P Global (hCaptcha), Deutsche Bank (wrong country)
+- Goldman Sachs uses India-wide filter since no Mumbai-specific jobs exist
+- PlaywrightScraper handles timeout gracefully (returns empty list, no crash)
+
+### Validation
+- 125 unit tests, all passing (0.18s)
+- Live test results: JPMorgan=500, Goldman Sachs=273, Oracle=126, Morningstar=54, Citi=49, Amazon=49, Nomura=42, Barclays=26, Nasdaq=25, Visa=17, Google=16, Microsoft=14, MSCI=7, BofA=4
+- Total in database: 1,201 jobs across 14 active sources
+- Dedupe working across runs (skipped counts on re-runs)
+
+### Blockers
+- None
+
+### Next recommended task
+- Live test Pune profile with new sources
+- Begin v2 planning (auto-applier, form-filler)
