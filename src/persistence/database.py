@@ -42,6 +42,35 @@ CREATE TABLE IF NOT EXISTS scrape_errors (
     timestamp TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (run_id) REFERENCES scrape_runs(run_id)
 );
+
+CREATE TABLE IF NOT EXISTS applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER REFERENCES jobs(job_id),
+    profile_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    applied_timestamp TEXT,
+    ats_platform TEXT NOT NULL DEFAULT '',
+    job_url TEXT NOT NULL DEFAULT '',
+    job_title TEXT NOT NULL DEFAULT '',
+    company_name TEXT NOT NULL DEFAULT '',
+    failure_reason TEXT NOT NULL DEFAULT '',
+    apply_method TEXT NOT NULL DEFAULT 'cli',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_applications_job_id ON applications(job_id);
+CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
+CREATE INDEX IF NOT EXISTS idx_applications_profile ON applications(profile_name);
+
+CREATE TABLE IF NOT EXISTS application_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id INTEGER NOT NULL REFERENCES applications(id),
+    attempt_timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+    result TEXT NOT NULL,
+    error_message TEXT NOT NULL DEFAULT '',
+    screenshot_path TEXT NOT NULL DEFAULT ''
+);
 """
 
 

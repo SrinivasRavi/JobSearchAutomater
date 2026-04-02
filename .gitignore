@@ -12,3 +12,10 @@ venv/
 *.sqlite3
 .pytest_cache/
 .mypy_cache/
+
+# User profiles contain PII — commit only example.yaml
+config/profiles/*.yaml
+!config/profiles/example.yaml
+
+# Screenshots from apply runs
+data/screenshots/

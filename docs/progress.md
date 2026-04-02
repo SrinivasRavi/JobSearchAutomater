@@ -340,3 +340,51 @@ Expand scraper coverage from 7 to 14 working sources by adding 4 HTTP API adapte
 ### Next recommended task
 - Live test Pune profile with new sources
 - Begin v2 planning (auto-applier, form-filler)
+
+---
+
+### Date
+2026-04-02
+
+### Task
+v2 Phase A — Tasks 1, 2, 3: UserProfile, Application Persistence, BaseFormFiller registry
+
+### Goal
+Build the shared backbone for the apply assistant: profile loading, application tracking DB, and the ATS form filler adapter interface.
+
+### Files changed
+- `src/models/user_profile.py` (new)
+- `config/profiles/example.yaml` (new — template, committed to git)
+- `tests/unit/test_user_profile.py` (new — 12 tests)
+- `src/persistence/database.py` — added `applications` + `application_attempts` tables and indexes to schema
+- `src/persistence/repository.py` — added `ApplicationRepository` class
+- `tests/unit/test_application_repository.py` (new — 24 tests)
+- `src/applier/__init__.py` (new)
+- `src/applier/base.py` (new — `FillResult` dataclass + `BaseFormFiller` ABC)
+- `src/applier/registry.py` (new — `register_filler` + `get_filler_for_url`)
+- `tests/unit/test_filler_registry.py` (new — 11 tests)
+- `.gitignore` — added `config/profiles/*.yaml` (except example.yaml) and `data/screenshots/`
+
+### What changed
+- `UserProfile` dataclass flattens nested YAML (name/location/education blocks) into flat fields
+- `load_profile(name)` / `list_profiles()` load from `config/profiles/*.yaml`; broken files handled gracefully
+- `applications` table tracks per-application metadata (profile, status, ATS, job_url, failure_reason, method)
+- `application_attempts` table tracks each fill attempt with screenshot path and error message
+- `ApplicationRepository` provides: create, update_status, log_attempt, get_by_job_id, get_pending_jobs, get_stats, list_applications
+- FK tests use `job_id=None` (nullable per spec) to avoid real-job setup in unit tests
+- `BaseFormFiller` is an ABC with `platform_name`, `can_handle`, `fill_form`, `submit` — adapter pattern mirrors scrapers
+- `register_filler` / `get_filler_for_url` form the registry; fillers self-register at import
+
+### Decisions made
+- `job_id` in applications is nullable (supports extension-applied jobs not in scraped DB)
+- `applied_timestamp` is set automatically when status is updated to SUBMITTED
+- Registry uses a list (not dict) to keep `can_handle` logic in each filler class (matches adapter pattern)
+
+### Validation
+- 172 unit tests, all passing (0.33s), no regressions
+
+### Blockers
+- None
+
+### Next recommended task
+- Task 4: Apply orchestrator + CLI commands (`apply`, `apply-queue`, `apply-stats`, `applications`, `mark-applied`, `list-profiles`)

@@ -1,0 +1,54 @@
+# UserProfile template — copy this file and fill in your details.
+# Save as config/profiles/your_profile_name.yaml (gitignored — contains PII).
+#
+# Usage:
+#   python3 -m src.cli apply --next --profile your_profile_name
+#   python3 -m src.cli list-profiles
+
+profile_name: "Backend Mumbai"
+
+name:
+  first: "FirstName"
+  last: "LastName"
+
+email: "your.email@example.com"
+phone: "+91-XXXXXXXXXX"
+
+location:
+  city: "Mumbai"
+  state: "Maharashtra"
+  country: "India"
+  zip: "400001"
+
+# Path to your resume PDF (relative to project root or absolute)
+resume_path: "config/resumes/resume.pdf"
+
+linkedin_url: "https://linkedin.com/in/yourprofile"
+github_url: "https://github.com/yourusername"
+portfolio_url: ""
+
+work_authorized: true
+sponsorship_required: false
+
+years_of_experience: 5
+current_company: ""
+current_title: ""
+notice_period_days: 30
+
+education:
+  degree: "Bachelor of Engineering"
+  major: "Computer Science"
+  university: "Your University"
+  graduation_year: 2020
+
+preferred_roles:
+  - "Software Engineer"
+  - "Backend Engineer"
+  - "Software Developer"
+
+# Default answers for common ATS demographic questions
+default_answers:
+  gender: "Prefer not to say"
+  ethnicity: "Prefer not to say"
+  veteran_status: "No"
+  disability_status: "Prefer not to say"
