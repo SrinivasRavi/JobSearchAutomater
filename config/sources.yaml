@@ -1,99 +1,126 @@
 # Source registry for v1 seeded career-page scraper.
-# Each entry maps a company to its listing URL and adapter class.
-# adapter: Python module path under src.scrapers (e.g. src.scrapers.bank_of_america)
+# Organized by profile (location). Each profile has its own set of source URLs.
+# Only sources with working adapters are enabled (adapter != null).
+# Sources without adapters are listed for reference but skipped at runtime.
 
-sources:
-  - name: bank_of_america
-    company: Bank of America
-    url: "https://careers.bankofamerica.com/en-us/job-search?ref=search&search=jobsByLocation&rows=10&start=0&keywords=software+engineer&sort=newest&searchstring=Mumbai%2C+India"
-    adapter: null  # TBD
+profiles:
+  mumbai:
+    label: "Software Engineer — Mumbai"
+    sources:
+      - name: amazon
+        company: Amazon
+        url: "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&category%5B%5D=software-development&job_type%5B%5D=Full-Time&distanceType=Mi&radius=24km&latitude=18.94018&longitude=72.83484&loc_group_id=&loc_query=Mumbai%2C%20Maharashtra%2C%20India&base_query=software&city=Mumbai&country=IND&region=Maharashtra&county=Mumbai&query_options=&"
 
-  - name: jpmorgan
-    company: JPMorganChase
-    url: "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs?keyword=Software+Engineer&location=Mumbai%2C+Maharashtra%2C+India&locationId=300000081151360&locationLevel=city&mode=location&radius=25&radiusUnit=MI&sortBy=POSTING_DATES_DESC"
-    adapter: null
+      - name: barclays
+        company: Barclays
+        url: "https://search.jobs.barclays/search-jobs?k=software+engineer&l=Mumbai%2C+Maharashtra&orgIds=13015"
 
-  - name: morgan_stanley
-    company: Morgan Stanley
-    url: "https://morganstanley.eightfold.ai/careers?source=mscom&query=Software+Engineer&start=0&pid=549795890684&sort_by=relevance&filter_businessarea=technology&filter_employmenttype=full+time&filter_city=Mumbai"
-    adapter: null
+      - name: citi
+        company: Citi
+        url: "https://jobs.citi.com/category/software-engineer-jobs/287/8644128/1"
 
-  - name: nomura
-    company: Nomura
-    url: "https://careers.nomura.com/Nomura/go/Career-Opportunities-India/9050900/?q=&q2=&alertId=&title=software+engineer&facility=&location=mumbai#searchresults"
-    adapter: null
+      - name: nomura
+        company: Nomura
+        url: "https://careers.nomura.com/Nomura/go/Career-Opportunities-India/9050900/?q=&q2=&alertId=&title=software+engineer&facility=&location=mumbai#searchresults"
 
-  - name: google
-    company: Google
-    url: "https://www.google.com/about/careers/applications/jobs/results/?location=Mumbai%2C%20India&employment_type=FULL_TIME&skills=engineer"
-    adapter: null
+      - name: visa
+        company: Visa
+        url: "https://www.visa.co.uk/en_gb/jobs/?categories=Software%20Development%2FEngineering&cities=Mumbai"
 
-  - name: goldman_sachs
-    company: Goldman Sachs
-    url: "https://higher.gs.com/results?JOB_FUNCTION=Software%20Engineering&LOCATION=Mumbai&page=1&sort=RELEVANCE"
-    adapter: null
+      - name: msci
+        company: MSCI
+        url: "https://careers.msci.com/job-search?production__mscicare2201__sort-rank%5Bquery%5D=Developer&production__mscicare2201__sort-rank%5BrefinementList%5D%5Btown_city_country%5D%5B0%5D=Mumbai%20%7C%20India"
 
-  - name: barclays
-    company: Barclays
-    url: "https://search.jobs.barclays/search-jobs?k=software+engineer&l=Mumbai%2C+Maharashtra&orgIds=13015"
-    adapter: null
+      # --- Sources without working adapters (v1.1) ---
+      - name: bank_of_america
+        company: Bank of America
+        url: "https://careers.bankofamerica.com/en-us/job-search?ref=search&search=jobsByLocation&rows=10&start=0&keywords=software+engineer&sort=newest&searchstring=Mumbai%2C+India"
+        enabled: false
 
-  - name: deutsche_bank
-    company: Deutsche Bank
-    url: "https://careers.db.com/professionals/search-roles/#/professional/results/?divisionProf=undefined&searchType=profession&category=1328&profession=1330&country=81"
-    adapter: null
+      - name: jpmorgan
+        company: JPMorganChase
+        url: "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs?keyword=Software+Engineer&location=Mumbai%2C+Maharashtra%2C+India&locationId=300000081151360&locationLevel=city&mode=location&radius=25&radiusUnit=MI&sortBy=POSTING_DATES_DESC"
+        enabled: false
 
-  - name: ubs
-    company: UBS
-    url: "https://jobs.ubs.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25008&siteid=5012&PageType=searchResults&SearchType=linkquery&LinkID=15231#keyWordSearch=software&locationSearch=Mumbai"
-    adapter: null
+      - name: morgan_stanley
+        company: Morgan Stanley
+        url: "https://morganstanley.eightfold.ai/careers?source=mscom&query=Software+Engineer&start=0&pid=549795890684&sort_by=relevance&filter_businessarea=technology&filter_employmenttype=full+time&filter_city=Mumbai"
+        enabled: false
 
-  - name: citi
-    company: Citi
-    url: "https://jobs.citi.com/category/software-engineer-jobs/287/8644128/1"
-    adapter: null
+      - name: google
+        company: Google
+        url: "https://www.google.com/about/careers/applications/jobs/results/?location=Mumbai%2C%20India&employment_type=FULL_TIME&skills=engineer"
+        enabled: false
 
-  - name: bnp_paribas
-    company: BNP Paribas
-    url: "https://group.bnpparibas/en/careers/all-job-offers?q=software%20engineer&city=379%7C2998%7C3000"
-    adapter: null
+      - name: goldman_sachs
+        company: Goldman Sachs
+        url: "https://higher.gs.com/results?JOB_FUNCTION=Software%20Engineering&LOCATION=Mumbai&page=1&sort=RELEVANCE"
+        enabled: false
 
-  - name: sp_global
-    company: S&P Global
-    url: "https://careers.spglobal.com/jobs?keywords=software%20engineer&location=mumbai&stretch=10&stretchUnit=MILES&sortBy=relevance&page=1"
-    adapter: null
+      - name: deutsche_bank
+        company: Deutsche Bank
+        url: "https://careers.db.com/professionals/search-roles/#/professional/results/?divisionProf=undefined&searchType=profession&category=1328&profession=1330&country=81"
+        enabled: false
 
-  - name: msci
-    company: MSCI
-    url: "https://careers.msci.com/job-search?production__mscicare2201__sort-rank%5Bquery%5D=Developer&production__mscicare2201__sort-rank%5BrefinementList%5D%5Btown_city_country%5D%5B0%5D=Mumbai%20%7C%20India"
-    adapter: null
+      - name: ubs
+        company: UBS
+        url: "https://jobs.ubs.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25008&siteid=5012&PageType=searchResults&SearchType=linkquery&LinkID=15231#keyWordSearch=software&locationSearch=Mumbai"
+        enabled: false
 
-  - name: morningstar
-    company: Morningstar
-    url: "https://careers.morningstar.com/us/en/c/product-development-jobs"
-    adapter: null
+      - name: bnp_paribas
+        company: BNP Paribas
+        url: "https://group.bnpparibas/en/careers/all-job-offers?q=software%20engineer&city=379%7C2998%7C3000"
+        enabled: false
 
-  - name: nasdaq
-    company: Nasdaq
-    url: "https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site?q=software%20engineer&Location_Country=c4f78be1a8f14da0ab49ce1162348a5e&locations=84ab8350a70e10019c78e4295b9b0000&locations=b638d7611d08100143bd56aa78670000&timeType=c5d5bf172e3c019da4ea33754c384e00"
-    adapter: null
+      - name: sp_global
+        company: S&P Global
+        url: "https://careers.spglobal.com/jobs?keywords=software%20engineer&location=mumbai&stretch=10&stretchUnit=MILES&sortBy=relevance&page=1"
+        enabled: false
 
-  - name: oracle
-    company: Oracle
-    url: "https://careers.oracle.com/en/sites/jobsearch/jobs?keyword=software+developer&location=MUMBAI%2C+MAHARASHTRA%2C+India&locationId=300001842985413&locationLevel=city&mode=location&radius=25&radiusUnit=MI"
-    adapter: null
+      - name: morningstar
+        company: Morningstar
+        url: "https://careers.morningstar.com/us/en/c/product-development-jobs"
+        enabled: false
 
-  - name: microsoft
-    company: Microsoft
-    url: "https://apply.careers.microsoft.com/careers?query=Software+Development&start=0&location=India%2C+Maharashtra%2C+Mumbai&pid=1970393556842859&sort_by=relevance&filter_distance=160&filter_include_remote=1"
-    adapter: null
+      - name: nasdaq
+        company: Nasdaq
+        url: "https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site?q=software%20engineer&Location_Country=c4f78be1a8f14da0ab49ce1162348a5e&locations=84ab8350a70e10019c78e4295b9b0000&locations=b638d7611d08100143bd56aa78670000&timeType=c5d5bf172e3c019da4ea33754c384e00"
+        enabled: false
 
-  - name: amazon
-    company: Amazon
-    url: "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&category%5B%5D=software-development&job_type%5B%5D=Full-Time&distanceType=Mi&radius=24km&latitude=18.94018&longitude=72.83484&loc_group_id=&loc_query=Mumbai%2C%20Maharashtra%2C%20India&base_query=software&city=Mumbai&country=IND&region=Maharashtra&county=Mumbai&query_options=&"
-    adapter: null
+      - name: oracle
+        company: Oracle
+        url: "https://careers.oracle.com/en/sites/jobsearch/jobs?keyword=software+developer&location=MUMBAI%2C+MAHARASHTRA%2C+India&locationId=300001842985413&locationLevel=city&mode=location&radius=25&radiusUnit=MI"
+        enabled: false
 
-  - name: visa
-    company: Visa
-    url: "https://www.visa.co.uk/en_gb/jobs/?categories=Software%20Development%2FEngineering&cities=Mumbai"
-    adapter: null
+      - name: microsoft
+        company: Microsoft
+        url: "https://apply.careers.microsoft.com/careers?query=Software+Development&start=0&location=India%2C+Maharashtra%2C+Mumbai&pid=1970393556842859&sort_by=relevance&filter_distance=160&filter_include_remote=1"
+        enabled: false
+
+  pune:
+    label: "Software Engineer — Pune"
+    sources:
+      - name: amazon
+        company: Amazon
+        url: "https://www.amazon.jobs/en/search?offset=0&result_limit=10&sort=relevant&category%5B%5D=software-development&job_type%5B%5D=Full-Time&distanceType=Mi&radius=24km&latitude=18.52043&longitude=73.85674&loc_query=Pune%2C%20Maharashtra%2C%20India&base_query=software&city=Pune&country=IND&region=Maharashtra&county=Pune&query_options=&"
+
+      - name: barclays
+        company: Barclays
+        url: "https://search.jobs.barclays/search-jobs?k=software+engineer&l=Pune%2C+Maharashtra&orgIds=13015"
+
+      - name: citi
+        company: Citi
+        url: "https://jobs.citi.com/category/software-engineer-jobs/287/8644128/1"
+        # Citi doesn't have a Pune-specific URL filter — same global listing, jobs have location in them
+
+      - name: nomura
+        company: Nomura
+        url: "https://careers.nomura.com/Nomura/go/Career-Opportunities-India/9050900/?q=&q2=&alertId=&title=software+engineer&facility=&location=pune#searchresults"
+
+      - name: visa
+        company: Visa
+        url: "https://www.visa.co.uk/en_gb/jobs/?categories=Software%20Development%2FEngineering&cities=Pune"
+
+      - name: msci
+        company: MSCI
+        url: "https://careers.msci.com/job-search?production__mscicare2201__sort-rank%5Bquery%5D=Developer&production__mscicare2201__sort-rank%5BrefinementList%5D%5Btown_city_country%5D%5B0%5D=Pune%20%7C%20India"

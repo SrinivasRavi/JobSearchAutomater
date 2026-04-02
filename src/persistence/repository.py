@@ -132,6 +132,24 @@ class JobRepository:
         )
         self._db.connection.commit()
 
+    def count_by_company(self) -> dict[str, int]:
+        cursor = self._db.connection.execute(
+            "SELECT company_name, COUNT(*) as cnt FROM jobs GROUP BY company_name ORDER BY cnt DESC"
+        )
+        return {row[0]: row[1] for row in cursor.fetchall()}
+
+    def count_by_source(self) -> dict[str, int]:
+        cursor = self._db.connection.execute(
+            "SELECT source_name, COUNT(*) as cnt FROM jobs GROUP BY source_name ORDER BY cnt DESC"
+        )
+        return {row[0]: row[1] for row in cursor.fetchall()}
+
+    def get_recent_runs(self, limit: int = 20) -> list[dict]:
+        cursor = self._db.connection.execute(
+            "SELECT * FROM scrape_runs ORDER BY run_id DESC LIMIT ?", (limit,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
     @staticmethod
     def _row_to_job(row: sqlite3.Row) -> Job:
         posted = row["posted_timestamp"]

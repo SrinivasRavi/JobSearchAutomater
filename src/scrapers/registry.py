@@ -1,42 +1,67 @@
 """Scraper registry — maps source names to adapter instances."""
+import logging
 import yaml
 import os
 from typing import Optional
 
 from src.scrapers.base import BaseScraper
 
+logger = logging.getLogger("jobsearch.registry")
+
 # Map of source name -> adapter class
 _ADAPTER_MAP: dict[str, type[BaseScraper]] = {}
+
+DEFAULT_PROFILE = "mumbai"
 
 
 def register_adapter(source_name: str, adapter_class: type[BaseScraper]):
     _ADAPTER_MAP[source_name] = adapter_class
 
 
-def _load_sources_config() -> list[dict]:
+def _load_config() -> dict:
     config_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         "config", "sources.yaml"
     )
     with open(config_path) as f:
-        config = yaml.safe_load(f)
-    return config.get("sources", [])
+        return yaml.safe_load(f)
 
 
-def get_scrapers(source_filter: Optional[str] = None) -> list[BaseScraper]:
+def list_profiles() -> list[str]:
+    """Return available profile names."""
+    config = _load_config()
+    return list(config.get("profiles", {}).keys())
+
+
+def get_scrapers(
+    profile: Optional[str] = None,
+    source_filter: Optional[str] = None,
+) -> list[BaseScraper]:
     """Build scraper instances from config. Only returns sources with registered adapters."""
-    # Import adapters to trigger registration
     _import_adapters()
+    config = _load_config()
 
-    sources = _load_sources_config()
+    profile_name = profile or DEFAULT_PROFILE
+    profiles = config.get("profiles", {})
+
+    if profile_name not in profiles:
+        logger.error("Profile '%s' not found. Available: %s",
+                     profile_name, list(profiles.keys()))
+        return []
+
+    sources = profiles[profile_name].get("sources", [])
     scrapers = []
 
     for source in sources:
         name = source["name"]
+        if source.get("enabled") is False:
+            continue
         if source_filter and name != source_filter:
             continue
         if name in _ADAPTER_MAP:
             scrapers.append(_ADAPTER_MAP[name](source["url"]))
+        else:
+            logger.debug("No adapter registered for source '%s', skipping", name)
 
     return scrapers
 

@@ -75,7 +75,10 @@ class BarclaysScraper(BaseScraper):
             soup = BeautifulSoup(response.text, "lxml")
             next_link = soup.find("a", class_="next")
             if next_link and next_link.get("href"):
-                current_url = urljoin(base_url, next_link["href"])
+                next_url = urljoin(base_url, next_link["href"])
+                if next_url == current_url:
+                    break
+                current_url = next_url
             else:
                 break
 

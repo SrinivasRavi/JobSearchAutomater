@@ -229,3 +229,51 @@ Build adapters for 6 more curated sources. Bring total to 7 working adapters cov
 - Investigate Deutsche Bank country filtering
 - Add Google adapter (embedded JS data parsing)
 - Or: set up Playwright for the 11 HARD sources
+
+---
+
+### Date
+2026-04-02
+
+### Task
+v1 profile support, CLI enhancements, pagination fixes, live validation
+
+### Goal
+Add multi-profile support (Mumbai + Pune), enhance CLI with query/runs/profiles commands, fix pagination bugs, and validate the full pipeline end-to-end.
+
+### Files changed
+- `config/sources.yaml` — Restructured to profile-based format with mumbai and pune profiles
+- `src/scrapers/registry.py` — Profile-aware source loading, `--profile` support
+- `src/cli.py` — Added query, runs, profiles commands; --profile flag on scrape
+- `src/persistence/repository.py` — Added count_by_company, count_by_source, get_recent_runs methods
+- `src/scrapers/citi.py` — Fixed infinite pagination loop (same-URL guard)
+- `src/scrapers/barclays.py` — Fixed infinite pagination loop (same-URL guard)
+
+### What changed
+- sources.yaml restructured from flat list to profile-based config (mumbai, pune)
+- Registry updated to load sources by profile name, with enabled/disabled flag support
+- CLI scrape command accepts `--profile` (default: mumbai)
+- New CLI commands: `query` (browse jobs with filters), `runs` (scrape history), `profiles` (list profiles)
+- Repository gained aggregate queries: count_by_company, count_by_source, get_recent_runs
+- Fixed Citi and Barclays pagination: last page's "next" link pointed to itself, causing infinite loop. Added `if next_url == current_url: break` guard
+- Deutsche Bank disabled in config (`enabled: false`) due to broken country filter
+
+### Decisions made
+- Profile-based config allows location variants without duplicating adapter code
+- Cross-profile dedupe works naturally: both profiles share the same database and clean_job_link unique constraint
+- Deutsche Bank punted to v1.1 until API country filtering is resolved
+- Hard sources (11 Playwright-dependent) explicitly deferred per user request
+
+### Validation
+- Mumbai scrape: 151 discovered, 141 inserted, 10 skipped, 0 errors (6 sources)
+- Pune scrape: 151 discovered, 49 inserted, 102 skipped, 0 errors (cross-profile dedupe working)
+- Total in database: 190 jobs across 6 sources
+- All CLI commands (stats, query, runs, profiles) working correctly
+- 92 unit tests still passing
+
+### Blockers
+- None
+
+### Next recommended task
+- User to validate full workflow and data quality
+- After satisfaction: set up Playwright for hard sources, or move to v1.1 planning

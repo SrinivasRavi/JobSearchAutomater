@@ -31,9 +31,20 @@
 - [x] Visa adapter (SmartRecruiters JSON API) — 17 jobs live
 - [x] MSCI adapter (Algolia JSON API) — 5 jobs live
 
+## Done (v1 profile support & CLI enhancements)
+- [x] Multi-profile support (mumbai, pune) in sources.yaml and registry
+- [x] CLI `--profile` flag for scrape command
+- [x] CLI `query` command (browse jobs with --company, --status, --limit filters)
+- [x] CLI `runs` command (scrape history)
+- [x] CLI `profiles` command (list available profiles)
+- [x] Repository aggregate queries (count_by_company, count_by_source, get_recent_runs)
+- [x] Fixed Citi pagination infinite loop (same-URL guard)
+- [x] Fixed Barclays pagination infinite loop (same-URL guard)
+- [x] Source-by-source enable/disable switch (enabled: false in sources.yaml)
+- [x] Live validation: 190 jobs across 6 sources, 0 errors, cross-profile dedupe working
+
 ## Now
-- [ ] Investigate Deutsche Bank country filtering (Beesite API ignores country param)
-- [ ] Add source-by-source enable/disable switch.
+- [ ] Investigate Deutsche Bank country filtering (Beesite API ignores country param) — punted to v1.1
 - [ ] Add retry behavior for transient source failures.
 - [ ] Add per-source timeout handling.
 
