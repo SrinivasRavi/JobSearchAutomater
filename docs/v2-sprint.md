@@ -4,8 +4,8 @@
 - **Started**: 2026-04-02
 - **Last updated**: 2026-04-03
 - **Phase A-B**: Complete (backbone, CLI, persistence)
-- **Phase C**: In progress — Workday filler partially working
-- **Current blocker**: Create Account button click fails; multi-page wizard not handled
+- **Phase C**: In progress — Workday filler fills My Information page end-to-end
+- **Current blocker**: Multi-page wizard (Pages 4-7) not yet handled; phone format validation error
 
 ---
 
@@ -31,14 +31,32 @@ Move from job discovery to job application. The system fills application forms u
 3. **Filler framework** — `BaseFormFiller` ABC, `FillResult` dataclass, filler registry with `can_handle()` URL matching
 4. **CLI commands** — `apply` (--next, --job-id, --job-link, --company, --profile, --limit), `apply-queue`, `apply-stats`, `applications`, `mark-applied`, `list-profiles`
 5. **Orchestrator** — Opens visible Chromium, two-step prompt (Proceed? → Submit?), records results
-6. **Workday filler navigation** — Successfully: waits for Apply button → clicks it → waits for modal → clicks "Apply Manually" → fills email/password/verify on Create Account → checks consent checkbox
+6. **Workday filler — full My Information page fill** — Complete flow:
+   - Click Apply button (force=True for Workday overlay)
+   - Handle "Apply Manually" modal (if present)
+   - Detect account page via password field count (2 = Create Account, 1 = Sign In)
+   - Sign In preferred: click "Sign In" link → detect modal dialog → scope selectors to modal → fill email + password → click Sign In
+   - Create Account fallback: fill email + 2 passwords + consent checkbox → click Create Account
+   - Wait for My Information page (using form field indicators, not progress bar text)
+   - Scroll to reveal all lazy-loaded fields
+   - Fill: first_name, last_name, phone (country code stripped), city, zip_code, address
+   - Click "No" radio for "Previously worked for Nasdaq?"
 7. **Oracle HCM filler** — Basic navigation (Apply → guest/login), field filling (untested on real site)
 
-### Not working
-1. **Create Account button click** — Filler finds and fills all fields on the Create Account page but fails to click the "Create Account" button. Button appears to be clicked (page refreshes) but doesn't advance to next page
-2. **Multi-page wizard** — No handling for navigating through Workday's 5+ page wizard (My Information → My Experience → Application Questions → Voluntary Disclosures → Review)
-3. **Dropdowns and radio buttons** — Only text inputs handled. Workday uses custom dropdowns (Country, "How Did You Hear About Us?") and radio buttons ("Previously worked here?")
-4. **Most companies unsupported** — Only Workday and Oracle HCM fillers exist. Google, Goldman Sachs, Barclays, Citi, Visa, Microsoft etc. are all UNSUPPORTED_ATS
+### Key Workday learnings (from self-testing)
+- **Workday is an SPA**: Old page DOM stays in the DOM behind new pages. Must scope selectors carefully.
+- **Sign In appears as a modal dialog**: `[role='dialog']` overlay on top of Create Account page. Selectors must scope to modal.
+- **`text=My Information` is a false positive**: Progress bar text appears on ALL pages. Use actual form field IDs instead.
+- **Form fields use `name=` and `id=` attributes**: NOT `data-automation-id` or `aria-label` on the My Information page.
+- **Phone field is split**: Country code dropdown + local number. Must strip `+91-` prefix before filling.
+- **`networkidle` times out on page.goto**: Use `domcontentloaded` + manual wait instead.
+
+### Not working / remaining
+1. **Phone number format**: Workday validates phone format — current value triggers "Enter a valid format" error. Need to investigate correct format.
+2. **"How Did You Hear About Us?" dropdown**: Custom Workday dropdown (not `<select>`), currently skipped. Human fills manually.
+3. **Multi-page wizard (Pages 4-7)**: No handling for My Experience → Application Questions → Voluntary Disclosures → Review
+4. **Resume upload**: Not tested on My Experience page yet
+5. **Most companies unsupported** — Only Workday and Oracle HCM fillers exist
 
 ---
 

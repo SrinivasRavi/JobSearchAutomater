@@ -481,3 +481,53 @@ Both Workday and Oracle HCM fillers were filling fields on the job detail page i
 ### Next recommended task
 - Real-browser test with `apply --next --company nasdaq` to verify Workday navigation works end-to-end
 - Address UNSUPPORTED_ATS problem — most companies have no filler (see response below)
+
+---
+
+## 2026-04-03 (Session 2): Workday filler — My Information page filled end-to-end
+
+### What changed
+- **Rewrote `src/applier/workday.py`** — Complete rewrite with Sign In first strategy
+  - Detects account page type by counting password fields (2 = Create Account, 1 = Sign In)
+  - Prefers Sign In (clicks "Sign In" link on Create Account page)
+  - Scopes Sign In form selectors to `[role='dialog']` modal (Workday shows Sign In as overlay)
+  - Falls back to Create Account if no Sign In link
+  - Waits for form page using actual field IDs, not progress bar text ("My Information" is a false positive)
+  - Full-page scroll to trigger lazy loading
+  - Fills: first_name, last_name, phone (country code stripped), city, zip_code, address
+  - Clicks "No" radio for "Previously worked for Nasdaq?"
+  - Debug: prints all visible input fields on page for diagnosis
+
+- **Fixed `src/applier/orchestrator.py`** — Changed `page.goto` from `networkidle` to `domcontentloaded` (Workday never reaches networkidle due to analytics)
+
+- **Updated `tests/unit/test_workday_filler.py`** — 21 tests covering new API (was 22, net -1 due to architecture change)
+
+### Key bugs fixed (discovered via self-testing with screenshots)
+1. **`_is_create_account_page()` returned False** on Create Account page — comma-separated locator syntax didn't work. Fixed by using multiple strategies + password field counting.
+2. **Sign In filled wrong fields** — Sign In modal scoped selectors hit Create Account fields behind modal. Fixed by scoping to `[role='dialog']`.
+3. **`text=My Information` matched progress bar** — False positive made code think form was loaded. Fixed by using actual input field IDs.
+4. **Form fields had no `data-automation-id`** — My Information page uses `name=` and `id=` attributes. Updated all selectors.
+5. **Phone country code** — Workday splits phone into country code dropdown + local number. Strip `+91-` prefix.
+6. **`networkidle` timeout on page.goto** — Workday analytics prevent networkidle. Use `domcontentloaded` instead.
+
+### Decisions
+- Sign In first, Create Account as fallback (account already exists from prior testing)
+- Password field count is the most reliable way to distinguish Create Account vs Sign In page
+- Print debug output to stdout (not logger) — logger wasn't configured to output to console
+- Fill all fields aggressively, skip custom dropdowns (human fills those)
+
+### Validation
+- 239 total tests passing (21 workday + 218 others)
+- Real Nasdaq self-test: fills 6/8 fields on My Information page
+- Screenshot at each step confirms visual state
+
+### Remaining issues
+- Phone number format validation error (Workday rejects `+91-` prefixed numbers)
+- "How Did You Hear About Us?" custom dropdown not filled (human does this)
+- Multi-page wizard (Pages 4-7) not yet handled
+- Resume upload untested
+
+### Next recommended task
+- Fix phone number format for Workday
+- Add multi-page wizard support (fill fields on each page, let human navigate)
+- Test one complete end-to-end application submission

@@ -45,6 +45,7 @@ def _make_page() -> MagicMock:
     mock_locator.first.is_visible.return_value = False
     mock_locator.count.return_value = 0
     mock_locator.nth.return_value = MagicMock()
+    mock_locator.all.return_value = []
     page.locator.return_value = mock_locator
 
     page.url = "https://nasdaq.wd1.myworkdayjobs.com/apply/123"
@@ -135,6 +136,7 @@ class TestWorkdayNavigation:
                 mock.first.wait_for.side_effect = Exception("Timeout")
             mock.count.return_value = 0
             mock.first.is_visible.return_value = False
+            mock.all.return_value = []
             return mock
         page.locator.side_effect = locator_side_effect
 
@@ -151,26 +153,25 @@ class TestWorkdayNavigation:
 
 
 class TestWorkdayAccountCreation:
-    def test_detects_create_account_page(self):
+    def test_has_element_returns_true_when_found(self):
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
         def locator_side_effect(sel):
             mock = MagicMock()
-            if "Create Account" in sel:
+            if sel == "text=Create Account":
                 mock.first.wait_for.return_value = None
             else:
                 mock.first.wait_for.side_effect = Exception("Timeout")
             return mock
         page.locator.side_effect = locator_side_effect
 
-        assert filler._is_create_account_page(page) is True
+        assert filler._has_element(page, "text=Create Account") is True
 
-    def test_does_not_detect_on_normal_page(self):
+    def test_has_element_returns_false_when_not_found(self):
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
-        # Default mock raises on wait_for
-        assert filler._is_create_account_page(page) is False
+        assert filler._has_element(page, "text=Create Account") is False
 
     def test_fills_email_on_create_account(self):
         filler = WorkdayFiller(_make_profile())
@@ -194,7 +195,7 @@ class TestWorkdayAccountCreation:
             return mock
         page.locator.side_effect = locator_side_effect
 
-        filler._handle_create_account(page)
+        filler._do_create_account(page)
         assert filled_values.get("email") == "srini@example.com"
 
     def test_fills_password_fields(self):
@@ -222,20 +223,33 @@ class TestWorkdayAccountCreation:
             return mock
         page.locator.side_effect = locator_side_effect
 
-        filler._handle_create_account(page)
+        filler._do_create_account(page)
         assert ("pw0", "TestPass123!") in pw_values
         assert ("pw1", "TestPass123!") in pw_values
 
-    def test_navigate_calls_create_account_handler(self):
+    def test_do_sign_in_fills_email_and_password(self):
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        with patch.object(filler, '_click_any', return_value=True):
-            with patch.object(filler, '_is_create_account_page', return_value=True):
-                with patch.object(filler, '_handle_create_account') as mock_create:
-                    with patch.object(filler, '_take_screenshot'):
-                        filler._navigate_to_form(page)
-                        mock_create.assert_called_once_with(page)
+        filled = {}
+        def locator_side_effect(sel):
+            mock = MagicMock()
+            if "email" in sel.lower() or "Email" in sel:
+                mock.first.wait_for.return_value = None
+                mock.first.fill.side_effect = lambda v: filled.update({"email": v})
+            elif "password" in sel:
+                mock.first.wait_for.return_value = None
+                mock.first.fill.side_effect = lambda v: filled.update({"password": v})
+            else:
+                mock.first.wait_for.side_effect = Exception("Timeout")
+            mock.count.return_value = 0
+            mock.all.return_value = []
+            return mock
+        page.locator.side_effect = locator_side_effect
+
+        filler._do_sign_in(page)
+        assert filled.get("email") == "srini@example.com"
+        assert filled.get("password") == "TestPass123!"
 
 
 class TestWorkdayFillForm:
@@ -255,15 +269,19 @@ class TestWorkdayFillForm:
         filled_fields = {}
         def locator_side_effect(sel):
             mock = MagicMock()
-            if "legalNameSection_firstName" in sel:
+            if "legalName--firstName" in sel:
                 mock.first.is_visible.return_value = True
                 mock.first.fill.side_effect = lambda v: filled_fields.update({"first_name": v})
-            elif "legalNameSection_lastName" in sel:
+                mock.first.scroll_into_view_if_needed.return_value = None
+            elif "legalName--lastName" in sel:
                 mock.first.is_visible.return_value = True
                 mock.first.fill.side_effect = lambda v: filled_fields.update({"last_name": v})
+                mock.first.scroll_into_view_if_needed.return_value = None
             else:
                 mock.first.is_visible.return_value = False
+                mock.first.scroll_into_view_if_needed.side_effect = Exception("not found")
             mock.count.return_value = 0
+            mock.all.return_value = []
             return mock
         page.locator.side_effect = locator_side_effect
 

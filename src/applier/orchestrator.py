@@ -94,8 +94,8 @@ class ApplyOrchestrator:
                 browser = pw.chromium.launch(headless=False)
                 with browser.new_context() as ctx:
                     page = ctx.new_page()
-                    page.goto(job_url, wait_until="networkidle")
-                    page.wait_for_timeout(3000)
+                    page.goto(job_url, wait_until="domcontentloaded", timeout=30000)
+                    page.wait_for_timeout(5000)
                     page.screenshot(path=before_shot)
 
                     fill_result = filler.fill_form(page)
