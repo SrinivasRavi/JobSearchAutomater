@@ -442,3 +442,42 @@ Complete the full apply pipeline: CLI orchestrator, ATS form fillers, URL resolv
 - Run `python3 -m src.cli list-profiles` to verify profile YAML loading works end-to-end
 - Create `config/profiles/backend_mumbai.yaml` with real PII and test `apply --next` on a real job
 - Consider adding Greenhouse filler (next most common ATS after Oracle HCM + Workday)
+
+---
+
+### Date
+2026-04-03
+
+### Task
+Fix premature form filling — add navigation to fillers
+
+### Goal
+Both Workday and Oracle HCM fillers were filling fields on the job detail page instead of navigating to the actual application form first. Fix by adding `_navigate_to_form()` to each filler.
+
+### Files changed
+- src/applier/workday.py — added `_navigate_to_form()`: clicks Apply button → handles "Start Your Application" modal (Apply Manually / Autofill with Resume) → waits for form
+- src/applier/oracle_hcm.py — added `_navigate_to_form()`: clicks Apply button → handles guest/login prompt (Apply as Guest / Continue without signing in) → waits for form
+- tests/unit/test_workday_filler.py — added 4 navigation tests (TestWorkdayNavigation)
+- tests/unit/test_oracle_hcm_filler.py — added 4 navigation tests (TestOracleHCMNavigation)
+
+### What changed
+- Workday filler: `fill_form()` now calls `_navigate_to_form(page)` first, which clicks through Apply → modal → form
+- Oracle HCM filler: same pattern — clicks Apply → guest/login → form before filling
+- Both fillers use fallback selectors for each step and gracefully continue if buttons aren't found
+- Added logging to navigation steps for debugging
+
+### Decisions made
+- Navigation is inside each filler (not in orchestrator) — each ATS has different navigation flows
+- `_navigate_to_form()` returns True even if no buttons found (may already be on the form)
+- Used `wait_for_timeout(3000)` after clicks to let pages load (Workday/Oracle are SPA-heavy)
+
+### Validation
+- 235 unit tests, all passing (0.21s), no regressions
+- Real-browser testing still needed with actual Nasdaq/JPMorgan URLs
+
+### Blockers
+- None
+
+### Next recommended task
+- Real-browser test with `apply --next --company nasdaq` to verify Workday navigation works end-to-end
+- Address UNSUPPORTED_ATS problem — most companies have no filler (see response below)

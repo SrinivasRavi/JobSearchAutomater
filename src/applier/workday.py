@@ -1,10 +1,36 @@
-"""Workday form filler — handles Nasdaq and other Workday ATS instances."""
+"""Workday form filler — handles Nasdaq and other Workday ATS instances.
+
+Flow:
+1. Job detail page → click "Apply" button
+2. "Start Your Application" modal → click "Apply Manually"
+3. Wait for form to load
+4. Fill personal info fields on "My Information" page
+"""
+import logging
+
 from src.applier.base import BaseFormFiller, FillResult
 from src.applier.registry import register_filler
 from src.models.user_profile import UserProfile
 
+logger = logging.getLogger(__name__)
+
+# Selectors to click the Apply button on the job detail page
+_APPLY_BUTTON_SELECTORS = [
+    "button:has-text('Apply')",
+    "a:has-text('Apply')",
+    "[data-automation-id='jobPostingApplyButton']",
+]
+
+# Selectors for the "Start Your Application" modal
+_APPLY_MANUALLY_SELECTORS = [
+    "button:has-text('Apply Manually')",
+    "a:has-text('Apply Manually')",
+    "button:has-text('Apply manually')",
+    # Fallback: "Autofill with Resume" is also acceptable
+    "button:has-text('Autofill with Resume')",
+]
+
 # Workday uses data-automation-id attributes and aria-labels
-# Each entry is (field_name, selector)
 _FIELD_SELECTORS = [
     ("first_name", "[data-automation-id='legalNameSection_firstName']"),
     ("first_name", "input[aria-label*='First Name']"),
@@ -39,7 +65,33 @@ class WorkdayFiller(BaseFormFiller):
     def can_handle(self, url: str) -> bool:
         return "myworkdayjobs.com" in url or "workday.com" in url
 
+    def _navigate_to_form(self, page) -> bool:
+        """Click Apply → handle modal → wait for form. Returns True if form loaded."""
+        # Step 1: Click "Apply" button on job detail page
+        for selector in _APPLY_BUTTON_SELECTORS:
+            btn = page.query_selector(selector)
+            if btn and btn.is_visible():
+                logger.info("Clicking Apply button: %s", selector)
+                btn.click()
+                page.wait_for_timeout(3000)
+                break
+
+        # Step 2: Handle "Start Your Application" modal
+        for selector in _APPLY_MANUALLY_SELECTORS:
+            btn = page.query_selector(selector)
+            if btn and btn.is_visible():
+                logger.info("Clicking application method: %s", selector)
+                btn.click()
+                page.wait_for_load_state("domcontentloaded")
+                page.wait_for_timeout(3000)
+                return True
+
+        # Maybe we're already on the form (no modal), or modal didn't appear
+        return True
+
     def fill_form(self, page) -> FillResult:
+        self._navigate_to_form(page)
+
         profile = self.profile
         field_values = {
             "first_name": profile.first_name,

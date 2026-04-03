@@ -1,7 +1,39 @@
-"""Oracle HCM form filler — handles JPMorgan, Oracle, and other Taleo/OracleCloud ATS."""
+"""Oracle HCM form filler — handles JPMorgan, Oracle, and other Taleo/OracleCloud ATS.
+
+Flow:
+1. Job detail page → click "Apply" button
+2. Handle guest/login prompt → click "Apply as Guest" or equivalent
+3. Wait for form to load
+4. Fill personal info fields
+"""
+import logging
+
 from src.applier.base import BaseFormFiller, FillResult
 from src.applier.registry import register_filler
 from src.models.user_profile import UserProfile
+
+logger = logging.getLogger(__name__)
+
+# Selectors to click the Apply button on the job detail page
+_APPLY_BUTTON_SELECTORS = [
+    "button:has-text('Apply')",
+    "a:has-text('Apply')",
+    "button:has-text('Apply Now')",
+    "a:has-text('Apply Now')",
+    "[data-action='apply']",
+]
+
+# Selectors for guest/login choice after clicking Apply
+_GUEST_APPLY_SELECTORS = [
+    "button:has-text('Apply as Guest')",
+    "a:has-text('Apply as Guest')",
+    "button:has-text('Continue without signing in')",
+    "a:has-text('Continue without signing in')",
+    "button:has-text('Apply without an Account')",
+    "a:has-text('Apply without an Account')",
+    "button:has-text('Continue as Guest')",
+    "a:has-text('Continue as Guest')",
+]
 
 # Selectors for Oracle HCM / Taleo forms
 _FIELD_SELECTORS = [
@@ -33,7 +65,33 @@ class OracleHCMFiller(BaseFormFiller):
             or "fa.us" in url and "oraclecloud" in url
         )
 
+    def _navigate_to_form(self, page) -> bool:
+        """Click Apply → handle guest/login → wait for form. Returns True if form loaded."""
+        # Step 1: Click "Apply" button on job detail page
+        for selector in _APPLY_BUTTON_SELECTORS:
+            btn = page.query_selector(selector)
+            if btn and btn.is_visible():
+                logger.info("Clicking Apply button: %s", selector)
+                btn.click()
+                page.wait_for_timeout(3000)
+                break
+
+        # Step 2: Handle guest/login prompt
+        for selector in _GUEST_APPLY_SELECTORS:
+            btn = page.query_selector(selector)
+            if btn and btn.is_visible():
+                logger.info("Clicking guest apply: %s", selector)
+                btn.click()
+                page.wait_for_load_state("domcontentloaded")
+                page.wait_for_timeout(3000)
+                return True
+
+        # Maybe we're already on the form (no guest prompt)
+        return True
+
     def fill_form(self, page) -> FillResult:
+        self._navigate_to_form(page)
+
         profile = self.profile
         field_values = {
             "first_name": profile.first_name,

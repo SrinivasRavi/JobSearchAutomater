@@ -142,6 +142,64 @@ class TestWorkdayFillForm:
         assert result.success is True
 
 
+class TestWorkdayNavigation:
+    def test_navigate_clicks_apply_button(self):
+        filler = WorkdayFiller(_make_profile())
+        page = _make_page()
+
+        apply_btn = MagicMock()
+        apply_btn.is_visible.return_value = True
+
+        def query_selector_side_effect(sel):
+            if "jobPostingApplyButton" in sel:
+                return apply_btn
+            return None
+        page.query_selector.side_effect = query_selector_side_effect
+
+        filler._navigate_to_form(page)
+        apply_btn.click.assert_called_once()
+
+    def test_navigate_clicks_apply_manually(self):
+        filler = WorkdayFiller(_make_profile())
+        page = _make_page()
+
+        apply_btn = MagicMock()
+        apply_btn.is_visible.return_value = True
+        manual_btn = MagicMock()
+        manual_btn.is_visible.return_value = True
+
+        call_count = [0]
+        def query_selector_side_effect(sel):
+            if "Apply Manually" in sel or "Apply manually" in sel:
+                return manual_btn
+            if "Apply" in sel:
+                call_count[0] += 1
+                return apply_btn if call_count[0] <= 1 else None
+            return None
+        page.query_selector.side_effect = query_selector_side_effect
+
+        result = filler._navigate_to_form(page)
+        assert result is True
+        manual_btn.click.assert_called_once()
+
+    def test_navigate_returns_true_when_no_modal(self):
+        filler = WorkdayFiller(_make_profile())
+        page = _make_page()
+        page.query_selector.return_value = None
+
+        result = filler._navigate_to_form(page)
+        assert result is True
+
+    def test_fill_form_calls_navigate_first(self):
+        filler = WorkdayFiller(_make_profile())
+        page = _make_page()
+        page.query_selector.return_value = None
+
+        with patch.object(filler, '_navigate_to_form', return_value=True) as mock_nav:
+            filler.fill_form(page)
+            mock_nav.assert_called_once_with(page)
+
+
 class TestWorkdaySubmit:
     def test_clicks_next_or_submit_button(self):
         filler = WorkdayFiller(_make_profile())

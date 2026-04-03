@@ -151,6 +151,64 @@ class TestOracleHCMFillForm:
         page.set_input_files.assert_not_called()
 
 
+class TestOracleHCMNavigation:
+    def test_navigate_clicks_apply_button(self):
+        filler = OracleHCMFiller(_make_profile())
+        page = _make_page()
+
+        apply_btn = MagicMock()
+        apply_btn.is_visible.return_value = True
+
+        def query_selector_side_effect(sel):
+            if "Apply" in sel:
+                return apply_btn
+            return None
+        page.query_selector.side_effect = query_selector_side_effect
+
+        filler._navigate_to_form(page)
+        apply_btn.click.assert_called()
+
+    def test_navigate_clicks_guest_apply(self):
+        filler = OracleHCMFiller(_make_profile())
+        page = _make_page()
+
+        apply_btn = MagicMock()
+        apply_btn.is_visible.return_value = True
+        guest_btn = MagicMock()
+        guest_btn.is_visible.return_value = True
+
+        call_count = [0]
+        def query_selector_side_effect(sel):
+            if "Guest" in sel or "without signing" in sel or "without an Account" in sel:
+                return guest_btn
+            if "Apply" in sel:
+                call_count[0] += 1
+                return apply_btn if call_count[0] <= 1 else None
+            return None
+        page.query_selector.side_effect = query_selector_side_effect
+
+        result = filler._navigate_to_form(page)
+        assert result is True
+        guest_btn.click.assert_called_once()
+
+    def test_navigate_returns_true_when_no_guest_prompt(self):
+        filler = OracleHCMFiller(_make_profile())
+        page = _make_page()
+        page.query_selector.return_value = None
+
+        result = filler._navigate_to_form(page)
+        assert result is True
+
+    def test_fill_form_calls_navigate_first(self):
+        filler = OracleHCMFiller(_make_profile())
+        page = _make_page()
+        page.query_selector.return_value = None
+
+        with patch.object(filler, '_navigate_to_form', return_value=True) as mock_nav:
+            filler.fill_form(page)
+            mock_nav.assert_called_once_with(page)
+
+
 class TestOracleHCMSubmit:
     def test_clicks_submit_button(self):
         filler = OracleHCMFiller(_make_profile())

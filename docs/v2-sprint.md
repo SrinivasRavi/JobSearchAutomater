@@ -60,7 +60,7 @@ config/profiles/
 - No multi-profile DB schema needed — just glob the directory
 - `.gitignore` the real files (PII), commit only `example.yaml`
 
-**Schema (each file):**
+**Schema (each file):** (please use the other schema and sample profile given after this)
 ```yaml
 # config/profiles/backend_mumbai.yaml
 profile_name: "Backend Mumbai"
@@ -106,6 +106,74 @@ default_answers:
   ethnicity: "Prefer not to say"
   veteran_status: "No"
   disability_status: "Prefer not to say"
+```
+
+new sample profile (use this schema and sample profile instead. Replace Mumbai with Pune everywhere for the 2nd UserProfile)
+```yaml
+profile_id: backend_mumbai
+profile_name: Backend Mumbai
+
+first_name: Srinivas
+last_name: Ravi
+full_name: Srinivas Ravi
+
+email: srinivasravi404@gmail.com
+phone: "+917208816364"
+
+location:
+  city: Mumbai
+  state: Maharashtra
+  country: India
+  zip_code: "400706"
+
+links:
+  linkedin_url: "https://linkedin.com/in/srinivas-ravi"
+  github_url: "https://github.com/SrinivasRavi"
+  portfolio_url: ""
+
+employment:
+  years_of_experience: 7
+  notice_period_days: 0
+
+experience:
+  - company: "Salesforce Inc"
+    title: "Senior Member of Technical Staff"
+    from: "29/04/2022"
+    to: "21/08/2024"
+    currently_working_here: false
+  - company: "Amazon Inc."
+    title: "Software Development Engineer"
+    from: "19/08/2019"
+    to: "21/04/2022"
+    currently_working_here: false
+
+education:
+  - degree: "MS"
+    major: "Computer Science"
+    university: "University at Buffalo"
+    graduation_year: 2019
+  - degree: "BE"
+    major: "Computer Engineering"
+    university: "Mumbai University"
+    graduation_year: 2015
+
+work_preferences:
+  target_roles:
+    - Backend Engineer
+    - Software Engineer
+    - Java Developer
+  target_locations:
+    - Mumbai
+
+documents:
+  resume_file_name: "backend_resume.pdf"
+  resume_path_hint: "/Users/srinivasravi/dev/JobSearchAutomater/docs/backend_resume.pdf"
+
+custom_answers:
+  sponsorship_required: "No"
+  authorized_to_work: "Yes"
+  current_ctc: ""
+  expected_ctc: "30 LPA"
 ```
 
 ### 3. ATS form fillers: Adapter pattern (like scrapers)
