@@ -222,6 +222,9 @@ def _apply_single_job(orch, profile, job_url, job_id, job_title, company_name):
 
 def cmd_apply(args, db):
     """Apply to a job using Playwright."""
+    import logging
+    setup_logging()
+    logging.getLogger("src.applier").setLevel(logging.DEBUG)
     from src.models.user_profile import load_profile, list_profiles as list_user_profiles
     from src.applier.orchestrator import ApplyOrchestrator
 

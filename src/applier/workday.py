@@ -135,10 +135,14 @@ class WorkdayFiller(BaseFormFiller):
                 el = page.wait_for_selector(selector, state="visible", timeout=timeout)
                 if el:
                     logger.info("Clicking %s: %s", description, selector)
+                    el.scroll_into_view_if_needed()
+                    page.wait_for_timeout(500)
                     el.click()
                     return True
-            except Exception:
-                continue
+            except TimeoutError:
+                logger.debug("Selector timed out for %s: %s", description, selector)
+            except Exception as e:
+                logger.warning("Click failed for %s with selector %s: %s", description, selector, e)
         logger.warning("No element appeared for: %s (waited %dms per selector)", description, timeout)
         return False
 
@@ -149,10 +153,14 @@ class WorkdayFiller(BaseFormFiller):
                 el = page.wait_for_selector(selector, state="visible", timeout=timeout)
                 if el:
                     logger.info("Filling %s: %s", description, selector)
+                    el.scroll_into_view_if_needed()
+                    page.wait_for_timeout(300)
                     el.fill(value)
                     return True
-            except Exception:
-                continue
+            except TimeoutError:
+                logger.debug("Selector timed out for %s: %s", description, selector)
+            except Exception as e:
+                logger.warning("Fill failed for %s with selector %s: %s", description, selector, e)
         logger.warning("No element appeared for: %s (waited %dms per selector)", description, timeout)
         return False
 
