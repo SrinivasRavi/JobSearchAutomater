@@ -388,3 +388,57 @@ Build the shared backbone for the apply assistant: profile loading, application 
 
 ### Next recommended task
 - Task 4: Apply orchestrator + CLI commands (`apply`, `apply-queue`, `apply-stats`, `applications`, `mark-applied`, `list-profiles`)
+
+---
+
+### Date
+2026-04-03
+
+### Task
+v2 Phase B+C+D — Tasks 4-8: Orchestrator, CLI commands, Oracle HCM, Workday, URL resolver, docs
+
+### Goal
+Complete the full apply pipeline: CLI orchestrator, ATS form fillers, URL resolver, and updated run-commands docs.
+
+### Files changed
+- `src/applier/orchestrator.py` (new — ApplyOrchestrator + ApplyResult)
+- `tests/unit/test_apply_orchestrator.py` (new — 9 tests)
+- `src/cli.py` — added `apply`, `apply-queue`, `apply-stats`, `applications`, `mark-applied`, `list-profiles` commands
+- `src/applier/oracle_hcm.py` (new — OracleHCMFiller, self-registers)
+- `tests/unit/test_oracle_hcm_filler.py` (new — 15 tests)
+- `src/applier/workday.py` (new — WorkdayFiller, self-registers)
+- `tests/unit/test_workday_filler.py` (new — 12 tests)
+- `src/applier/url_resolver.py` (new — ApplyUrlResolver)
+- `tests/unit/test_url_resolver.py` (new — 5 tests)
+- `docs/run-commands.md` — added full v2 applying section
+
+### What changed
+- `ApplyOrchestrator.apply_to_url()`: finds filler → opens headed Playwright → fills form → takes screenshots → prompts y/n/skip → records result
+- Human-in-the-loop enforced: no auto-submit path exists
+- `OracleHCMFiller`: aria-label selectors, handles taleo.net + oraclecloud.com, resume upload via set_input_files
+- `WorkdayFiller`: data-automation-id selectors for Workday's standardized form fields, handles myworkdayjobs.com + workday.com
+- Both fillers self-register into the filler registry at import time
+- `ApplyUrlResolver.resolve_apply_page()`: navigates to job listing page, tries 8 Apply button selectors, clicks first visible one
+- CLI commands wired cleanly: apply/apply-queue/apply-stats/applications/mark-applied receive `db` object directly; scrape/query/stats/export/runs/profiles keep receiving `repo`
+- `list-profiles` added to CLI — shows YAML profiles, distinct from scraping profiles
+- `mark-applied` records a manual application with SUBMITTED status
+- run-commands.md has a full v2 applying section including profile setup, apply queue, submit flow, and supported ATS table
+
+### Decisions made
+- Fillers self-register (import `oracle_hcm` / `workday` in orchestrator or CLI) — avoids a separate registry config file
+- Screenshots stored as `data/screenshots/{app_id}_before.png` and `{app_id}_after.png` (gitignored)
+- `apply_to_url` uses `job_id=None` for jobs not in the scraped DB (extension flow support)
+- Oracle HCM `can_handle` covers `taleo.net` and `oraclecloud.com` (not myworkdayjobs — that's Workday)
+- URL resolver tries 8 selectors in priority order, stops at first visible match
+
+### Validation
+- 215 unit tests, all passing (0.40s), no regressions
+
+### Blockers
+- Chrome extension development skipped per user instruction — extension is out of scope for this sprint
+- Real-browser integration tests deferred to `tests/integration/` (Playwright required, not run in CI)
+
+### Next recommended task
+- Run `python3 -m src.cli list-profiles` to verify profile YAML loading works end-to-end
+- Create `config/profiles/backend_mumbai.yaml` with real PII and test `apply --next` on a real job
+- Consider adding Greenhouse filler (next most common ATS after Oracle HCM + Workday)

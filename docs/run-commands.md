@@ -101,9 +101,101 @@ python3 -m src.cli export --output jobs.csv
 # View recent scrape runs
 python3 -m src.cli runs
 
-# List available profiles
+# List available scraping profiles
 python3 -m src.cli profiles
 ```
+
+---
+
+## Applying to Jobs (v2)
+
+### Setup
+
+Create your user profile (contains your personal info for form filling):
+
+```bash
+# Copy the example template and fill in your details
+cp config/profiles/example.yaml config/profiles/backend_mumbai.yaml
+# Edit the file with your name, email, phone, resume path, etc.
+```
+
+Your profile YAML is gitignored — it stays local and never gets committed.
+
+### List profiles and apply queue
+
+```bash
+# See available user profiles
+python3 -m src.cli list-profiles
+
+# Show jobs in the apply queue (NOT_APPLIED, no application attempt yet)
+python3 -m src.cli apply-queue
+python3 -m src.cli apply-queue --limit 50
+```
+
+### Apply to jobs
+
+This opens a **visible Chromium browser**, fills the form, then pauses for your review.
+
+```bash
+# Apply to the next pending job (uses first available profile)
+python3 -m src.cli apply --next
+
+# Apply to next 5 jobs
+python3 -m src.cli apply --next --limit 5
+
+# Apply to a specific job by ID
+python3 -m src.cli apply --job-id 42
+
+# Use a specific profile
+python3 -m src.cli apply --next --profile backend_mumbai
+python3 -m src.cli apply --job-id 42 --profile ai_remote
+```
+
+When the form is filled, the terminal will show:
+```
+--- Form Filled ---
+Job:     Backend Engineer @ Acme Corp
+Filled:  first_name, last_name, email, phone
+Skipped: resume
+
+Submit? [y/n/skip]:
+```
+- `y` — clicks Submit, records SUBMITTED
+- `n` — closes browser, records FAILED (HUMAN_REJECTED)
+- `skip` — closes browser, no status change
+
+### View application history and stats
+
+```bash
+# Application statistics (by status, profile, method)
+python3 -m src.cli apply-stats
+
+# List all applications
+python3 -m src.cli applications
+
+# Filter by status
+python3 -m src.cli applications --status SUBMITTED
+python3 -m src.cli applications --status FAILED
+
+# Filter by profile
+python3 -m src.cli applications --profile backend_mumbai
+```
+
+### Mark a job as manually applied
+
+```bash
+python3 -m src.cli mark-applied --job-id 42
+python3 -m src.cli mark-applied --job-id 42 --profile backend_mumbai
+```
+
+### Supported ATS platforms
+
+| Platform | URLs | Jobs in DB |
+|----------|------|-----------|
+| Oracle HCM | `*.taleo.net`, `*.oraclecloud.com` | ~625 (JPMorgan, Oracle) |
+| Workday | `*.myworkdayjobs.com`, `*.workday.com` | ~25+ (Nasdaq + others) |
+
+Jobs on unsupported platforms are recorded as FAILED with reason `UNSUPPORTED_ATS`.
 
 ## Testing
 
