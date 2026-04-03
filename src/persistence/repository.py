@@ -248,15 +248,22 @@ class ApplicationRepository:
         row = cursor.fetchone()
         return dict(row) if row else None
 
-    def get_pending_jobs(self, limit: int = 10) -> list[dict]:
+    def get_pending_jobs(
+        self, limit: int = 10, company: Optional[str] = None
+    ) -> list[dict]:
         """Return NOT_APPLIED jobs that have no application record yet."""
-        cursor = self._conn.execute(
+        query = (
             "SELECT j.* FROM jobs j "
             "LEFT JOIN applications a ON a.job_id = j.job_id "
-            "WHERE j.application_status = 'NOT_APPLIED' AND a.id IS NULL "
-            "ORDER BY j.scraped_timestamp DESC LIMIT ?",
-            (limit,),
+            "WHERE j.application_status = 'NOT_APPLIED' AND a.id IS NULL"
         )
+        params: list = []
+        if company:
+            query += " AND j.company_name LIKE ?"
+            params.append(f"%{company}%")
+        query += " ORDER BY j.scraped_timestamp DESC LIMIT ?"
+        params.append(limit)
+        cursor = self._conn.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
 
     def get_stats(self) -> dict:

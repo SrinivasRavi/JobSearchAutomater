@@ -272,8 +272,9 @@ def cmd_apply(args, db):
 
     elif args.next:
         app_repo = ApplicationRepository(db.connection)
+        company = getattr(args, "company", None)
         # Fetch more than needed to allow for skips
-        pending = app_repo.get_pending_jobs(limit=args.limit * 5)
+        pending = app_repo.get_pending_jobs(limit=args.limit * 5, company=company)
         if not pending:
             print("No pending jobs in the apply queue.")
             return
@@ -295,7 +296,8 @@ def cmd_apply(args, db):
 def cmd_apply_queue(args, db):
     """Show the apply queue (NOT_APPLIED jobs without an application record)."""
     app_repo = ApplicationRepository(db.connection)
-    pending = app_repo.get_pending_jobs(limit=args.limit)
+    company = getattr(args, "company", None)
+    pending = app_repo.get_pending_jobs(limit=args.limit, company=company)
     if not pending:
         print("Apply queue is empty.")
         return
@@ -410,11 +412,13 @@ def main():
     p_apply.add_argument("--job-link", help="Apply to a job by its URL")
     p_apply.add_argument("--next", action="store_true", help="Apply to next pending job")
     p_apply.add_argument("--limit", "-n", type=int, default=1, help="Number of jobs (with --next)")
+    p_apply.add_argument("--company", "-c", help="Filter by company name (with --next)")
     p_apply.add_argument("--profile", "-p", help="Profile name to use (default: first available)")
 
     # apply-queue
     p_queue = subparsers.add_parser("apply-queue", help="Show jobs in the apply queue")
     p_queue.add_argument("--limit", "-n", type=int, default=20)
+    p_queue.add_argument("--company", "-c", help="Filter by company name")
 
     # apply-stats
     subparsers.add_parser("apply-stats", help="Show application statistics")
