@@ -128,8 +128,36 @@ class WorkdayFiller(BaseFormFiller):
     def can_handle(self, url: str) -> bool:
         return "myworkdayjobs.com" in url or "workday.com" in url
 
+    def _wait_and_click(self, page, selectors: list[str], description: str, timeout: int = 10000) -> bool:
+        """Wait for any of the selectors to appear, then click. Returns True if clicked."""
+        for selector in selectors:
+            try:
+                el = page.wait_for_selector(selector, state="visible", timeout=timeout)
+                if el:
+                    logger.info("Clicking %s: %s", description, selector)
+                    el.click()
+                    return True
+            except Exception:
+                continue
+        logger.warning("No element appeared for: %s (waited %dms per selector)", description, timeout)
+        return False
+
+    def _wait_and_fill(self, page, selectors: list[str], value: str, description: str, timeout: int = 10000) -> bool:
+        """Wait for any of the selectors to appear, then fill. Returns True if filled."""
+        for selector in selectors:
+            try:
+                el = page.wait_for_selector(selector, state="visible", timeout=timeout)
+                if el:
+                    logger.info("Filling %s: %s", description, selector)
+                    el.fill(value)
+                    return True
+            except Exception:
+                continue
+        logger.warning("No element appeared for: %s (waited %dms per selector)", description, timeout)
+        return False
+
     def _click_first_visible(self, page, selectors: list[str], description: str) -> bool:
-        """Try each selector in order, click the first visible element. Returns True if clicked."""
+        """Try each selector without waiting (for fields that should already be on-screen)."""
         for selector in selectors:
             try:
                 el = page.query_selector(selector)
@@ -143,7 +171,7 @@ class WorkdayFiller(BaseFormFiller):
         return False
 
     def _fill_first_visible(self, page, selectors: list[str], value: str, description: str) -> bool:
-        """Try each selector in order, fill the first visible element. Returns True if filled."""
+        """Try each selector without waiting (for fields that should already be on-screen)."""
         for selector in selectors:
             try:
                 el = page.query_selector(selector)
@@ -159,15 +187,18 @@ class WorkdayFiller(BaseFormFiller):
     def _navigate_to_form(self, page) -> bool:
         """Navigate through Apply → modal → account creation → form. Returns True if form loaded."""
 
-        # Step 1: Click "Apply" button on job detail page
-        logger.info("Step 1: Looking for Apply button on job detail page")
-        if self._click_first_visible(page, _APPLY_BUTTON_SELECTORS, "Apply button"):
+        # Step 1: Wait for and click "Apply" button on job detail page
+        logger.info("Step 1: Waiting for Apply button on job detail page")
+        if self._wait_and_click(page, _APPLY_BUTTON_SELECTORS, "Apply button", timeout=15000):
             page.wait_for_timeout(3000)
+        else:
+            logger.warning("Apply button not found — page may not have loaded correctly")
+            return False
 
-        # Step 2: Handle "Start Your Application" modal
-        logger.info("Step 2: Looking for Apply Manually in modal")
-        if self._click_first_visible(page, _APPLY_MANUALLY_SELECTORS, "Apply Manually"):
-            page.wait_for_load_state("domcontentloaded")
+        # Step 2: Wait for and handle "Start Your Application" modal
+        logger.info("Step 2: Waiting for Apply Manually in modal")
+        if self._wait_and_click(page, _APPLY_MANUALLY_SELECTORS, "Apply Manually", timeout=10000):
+            page.wait_for_load_state("networkidle")
             page.wait_for_timeout(3000)
 
         # Step 3: Handle "Create Account / Sign In" page
@@ -186,16 +217,18 @@ class WorkdayFiller(BaseFormFiller):
 
     def _is_create_account_page(self, page) -> bool:
         """Check if the current page is a Create Account page."""
-        # Look for heading or button that says "Create Account"
         for selector in [
             "h2:has-text('Create Account')",
             "h1:has-text('Create Account')",
             "button:has-text('Create Account')",
             "[data-automation-id='createAccountSubmitButton']",
         ]:
-            el = page.query_selector(selector)
-            if el and el.is_visible():
-                return True
+            try:
+                el = page.wait_for_selector(selector, state="visible", timeout=5000)
+                if el:
+                    return True
+            except Exception:
+                continue
         return False
 
     def _is_sign_in_page(self, page) -> bool:
@@ -205,9 +238,12 @@ class WorkdayFiller(BaseFormFiller):
             "h1:has-text('Sign In')",
             "[data-automation-id='signInSubmitButton']",
         ]:
-            el = page.query_selector(selector)
-            if el and el.is_visible():
-                return True
+            try:
+                el = page.wait_for_selector(selector, state="visible", timeout=3000)
+                if el:
+                    return True
+            except Exception:
+                continue
         return False
 
     def _handle_create_account(self, page) -> None:
@@ -215,10 +251,10 @@ class WorkdayFiller(BaseFormFiller):
         profile = self.profile
 
         # Fill email
-        self._fill_first_visible(
-            page, _CREATE_ACCOUNT_EMAIL_SELECTORS, profile.email, "account email"
+        self._wait_and_fill(
+            page, _CREATE_ACCOUNT_EMAIL_SELECTORS, profile.email, "account email", timeout=10000
         )
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(1000)
 
         # Fill password
         password = profile.ats_password
@@ -226,18 +262,18 @@ class WorkdayFiller(BaseFormFiller):
             logger.error("No ats_password in profile — cannot create account")
             return
 
-        # Find and fill password field (first password input)
+        # Find and fill password fields
         self._fill_password_fields(page, password)
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(1000)
 
         # Check consent checkbox
         self._check_consent(page)
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(1000)
 
         # Click Create Account
-        if self._click_first_visible(page, _CREATE_ACCOUNT_BUTTON_SELECTORS, "Create Account"):
+        if self._wait_and_click(page, _CREATE_ACCOUNT_BUTTON_SELECTORS, "Create Account", timeout=5000):
             logger.info("Clicked Create Account — waiting for next page")
-            page.wait_for_load_state("domcontentloaded")
+            page.wait_for_load_state("networkidle")
             page.wait_for_timeout(5000)
 
     def _fill_password_fields(self, page, password: str) -> None:
@@ -283,15 +319,15 @@ class WorkdayFiller(BaseFormFiller):
     def _handle_sign_in(self, page) -> None:
         """Sign in with existing account."""
         profile = self.profile
-        self._fill_first_visible(
-            page, _SIGN_IN_EMAIL_SELECTORS, profile.email, "sign-in email"
+        self._wait_and_fill(
+            page, _SIGN_IN_EMAIL_SELECTORS, profile.email, "sign-in email", timeout=10000
         )
         if profile.ats_password:
             password_inputs = page.query_selector_all("input[type='password']")
             if password_inputs and password_inputs[0].is_visible():
                 password_inputs[0].fill(profile.ats_password)
-        if self._click_first_visible(page, _SIGN_IN_BUTTON_SELECTORS, "Sign In"):
-            page.wait_for_load_state("domcontentloaded")
+        if self._wait_and_click(page, _SIGN_IN_BUTTON_SELECTORS, "Sign In", timeout=5000):
+            page.wait_for_load_state("networkidle")
             page.wait_for_timeout(5000)
 
     def fill_form(self, page) -> FillResult:

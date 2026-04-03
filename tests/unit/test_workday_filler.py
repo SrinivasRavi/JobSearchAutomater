@@ -27,11 +27,21 @@ def _make_profile() -> UserProfile:
 
 
 def _make_page() -> MagicMock:
+    """Create a mock page where all selectors return None by default."""
     page = MagicMock()
     page.query_selector.return_value = None
     page.query_selector_all.return_value = []
+    # wait_for_selector raises TimeoutError by default (element not found)
+    page.wait_for_selector.side_effect = TimeoutError("not found")
     page.url = "https://nasdaq.wd1.myworkdayjobs.com/apply/123"
     return page
+
+
+def _make_visible_el():
+    """Create a mock element that reports visible."""
+    el = MagicMock()
+    el.is_visible.return_value = True
+    return el
 
 
 class TestWorkdayCanHandle:
@@ -57,11 +67,6 @@ class TestWorkdayCanHandle:
 
 
 class TestWorkdayFillForm:
-    def _make_input_el(self):
-        el = MagicMock()
-        el.is_visible.return_value = True
-        return el
-
     def test_returns_fill_result(self):
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
@@ -72,7 +77,7 @@ class TestWorkdayFillForm:
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        first_el = self._make_input_el()
+        first_el = _make_visible_el()
         def query_selector_side_effect(sel):
             if "legalNameSection_firstName" in sel or "firstName" in sel.lower():
                 return first_el
@@ -86,7 +91,7 @@ class TestWorkdayFillForm:
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        last_el = self._make_input_el()
+        last_el = _make_visible_el()
         def query_selector_side_effect(sel):
             if "legalNameSection_lastName" in sel or "lastName" in sel.lower():
                 return last_el
@@ -100,7 +105,7 @@ class TestWorkdayFillForm:
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        email_el = self._make_input_el()
+        email_el = _make_visible_el()
         def query_selector_side_effect(sel):
             if "email" in sel.lower():
                 return email_el
@@ -114,7 +119,7 @@ class TestWorkdayFillForm:
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        file_el = self._make_input_el()
+        file_el = _make_visible_el()
         def query_selector_side_effect(sel):
             if "file" in sel:
                 return file_el
@@ -122,13 +127,11 @@ class TestWorkdayFillForm:
         page.query_selector.side_effect = query_selector_side_effect
 
         filler.fill_form(page)
-        page.set_input_files.assert_called_with("input[type='file']", "config/resumes/resume.pdf")  # resume_path_hint
+        page.set_input_files.assert_called_with("input[type='file']", "config/resumes/resume.pdf")
 
     def test_skips_missing_fields(self):
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
-        page.query_selector.return_value = None
-
         result = filler.fill_form(page)
         assert len(result.fields_skipped) > 0
 
@@ -136,7 +139,7 @@ class TestWorkdayFillForm:
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        el = self._make_input_el()
+        el = _make_visible_el()
         page.query_selector.return_value = el
 
         result = filler.fill_form(page)
@@ -144,57 +147,55 @@ class TestWorkdayFillForm:
 
 
 class TestWorkdayNavigation:
-    def test_navigate_clicks_apply_button(self):
+    def test_navigate_waits_for_apply_button(self):
+        """Apply button found via wait_for_selector."""
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        apply_btn = MagicMock()
-        apply_btn.is_visible.return_value = True
+        apply_btn = _make_visible_el()
 
-        def query_selector_side_effect(sel):
+        def wait_for_selector_side_effect(sel, **kwargs):
             if "jobPostingApplyButton" in sel:
                 return apply_btn
-            return None
-        page.query_selector.side_effect = query_selector_side_effect
+            raise TimeoutError("not found")
+        page.wait_for_selector.side_effect = wait_for_selector_side_effect
 
         filler._navigate_to_form(page)
         apply_btn.click.assert_called_once()
 
-    def test_navigate_clicks_apply_manually(self):
+    def test_navigate_waits_for_apply_manually(self):
+        """After clicking Apply, waits for Apply Manually in modal."""
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        apply_btn = MagicMock()
-        apply_btn.is_visible.return_value = True
-        manual_btn = MagicMock()
-        manual_btn.is_visible.return_value = True
+        apply_btn = _make_visible_el()
+        manual_btn = _make_visible_el()
 
-        call_count = [0]
-        def query_selector_side_effect(sel):
-            if "Apply Manually" in sel or "Apply manually" in sel:
+        def wait_for_selector_side_effect(sel, **kwargs):
+            if "jobPostingApplyButton" in sel:
+                return apply_btn
+            if "Apply Manually" in sel:
                 return manual_btn
-            if "Apply" in sel:
-                call_count[0] += 1
-                return apply_btn if call_count[0] <= 1 else None
-            return None
-        page.query_selector.side_effect = query_selector_side_effect
+            raise TimeoutError("not found")
+        page.wait_for_selector.side_effect = wait_for_selector_side_effect
 
         result = filler._navigate_to_form(page)
         assert result is True
+        apply_btn.click.assert_called_once()
         manual_btn.click.assert_called_once()
 
-    def test_navigate_returns_true_when_no_modal(self):
+    def test_navigate_returns_false_when_no_apply_button(self):
+        """If Apply button never appears, returns False."""
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
-        page.query_selector.return_value = None
+        # All wait_for_selector raise TimeoutError (default)
 
         result = filler._navigate_to_form(page)
-        assert result is True
+        assert result is False
 
     def test_fill_form_calls_navigate_first(self):
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
-        page.query_selector.return_value = None
 
         with patch.object(filler, '_navigate_to_form', return_value=True) as mock_nav:
             filler.fill_form(page)
@@ -206,31 +207,31 @@ class TestWorkdayAccountCreation:
         """Mock a page that shows Create Account form."""
         page = _make_page()
 
-        create_btn = MagicMock()
-        create_btn.is_visible.return_value = True
-
-        checkbox = MagicMock()
-        checkbox.is_visible.return_value = True
+        create_heading = _make_visible_el()
+        create_btn = _make_visible_el()
+        checkbox = _make_visible_el()
         checkbox.is_checked.return_value = False
+        email_el = _make_visible_el()
 
-        password_input_1 = MagicMock()
-        password_input_1.is_visible.return_value = True
-        password_input_2 = MagicMock()
-        password_input_2.is_visible.return_value = True
+        password_input_1 = _make_visible_el()
+        password_input_2 = _make_visible_el()
         page.query_selector_all.return_value = [password_input_1, password_input_2]
 
-        email_el = MagicMock()
-        email_el.is_visible.return_value = True
-
-        def query_selector_side_effect(sel):
+        def wait_for_selector_side_effect(sel, **kwargs):
+            if "Create Account" in sel and ("h2" in sel or "h1" in sel):
+                return create_heading
             if "Create Account" in sel and "button" in sel.lower():
                 return create_btn
-            if "Create Account" in sel:
+            if "createAccountSubmitButton" in sel:
                 return create_btn
-            if "checkbox" in sel:
-                return checkbox
             if "email" in sel.lower() or "Email" in sel:
                 return email_el
+            raise TimeoutError("not found")
+        page.wait_for_selector.side_effect = wait_for_selector_side_effect
+
+        def query_selector_side_effect(sel):
+            if "checkbox" in sel:
+                return checkbox
             return None
         page.query_selector.side_effect = query_selector_side_effect
 
@@ -238,13 +239,13 @@ class TestWorkdayAccountCreation:
 
     def test_detects_create_account_page(self):
         filler = WorkdayFiller(_make_profile())
-        page, create_btn, *_ = self._make_create_account_page()
+        page, *_ = self._make_create_account_page()
         assert filler._is_create_account_page(page) is True
 
     def test_does_not_detect_create_account_on_normal_page(self):
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
-        page.query_selector.return_value = None
+        # All wait_for_selector raise TimeoutError (default)
         assert filler._is_create_account_page(page) is False
 
     def test_fills_email_on_create_account(self):
@@ -275,11 +276,21 @@ class TestWorkdayAccountCreation:
     def test_navigate_handles_create_account_flow(self):
         """Full navigation: Apply → modal → Create Account."""
         filler = WorkdayFiller(_make_profile())
-        page, create_btn, checkbox, email_el, pw1, pw2 = self._make_create_account_page()
+        page, *_ = self._make_create_account_page()
 
         with patch.object(filler, '_handle_create_account') as mock_create:
-            # Make _is_create_account_page return True
             with patch.object(filler, '_is_create_account_page', return_value=True):
+                # Make Apply button found so we don't return False early
+                apply_btn = _make_visible_el()
+                original_side_effect = page.wait_for_selector.side_effect
+                def patched_wait(sel, **kwargs):
+                    if "jobPostingApplyButton" in sel:
+                        return apply_btn
+                    if "Apply Manually" in sel:
+                        return _make_visible_el()
+                    return original_side_effect(sel, **kwargs)
+                page.wait_for_selector.side_effect = patched_wait
+
                 result = filler._navigate_to_form(page)
                 assert result is True
                 mock_create.assert_called_once_with(page)
@@ -290,8 +301,7 @@ class TestWorkdaySubmit:
         filler = WorkdayFiller(_make_profile())
         page = _make_page()
 
-        btn = MagicMock()
-        btn.is_visible.return_value = True
+        btn = _make_visible_el()
         page.query_selector.return_value = btn
 
         result = filler.submit(page)

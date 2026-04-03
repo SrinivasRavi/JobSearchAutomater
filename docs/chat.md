@@ -1,3 +1,46 @@
+#9.
+The screenshot image is of the page which was in front of me the whole time. You performed nothing. Can you stop pretending you have been able to successfully press even 1 button? The login screen didn't trip you up before. You are plain unable to press any button. And the audacity to keep pasting the form when there is no form in sight. How delusional are you? I explicitly suggested you to wait for things to load at the minimum but no, you didn't code that. This is the lowest stake ask, and you are folding. I am letting you try things out, but I am pissed that you have been going in circles and pretending like everything is ok. If you can see you are unable to press a button, ask yourself why and try it. Else tell me, we can figure out. But these unnecessary adding multipage and sign in handling code when you fail to press a button really shows how lacking your skills are. This is the time you get your act right.
+
+'''
+(.venv) srinivasravi@Srinivass-MacBook-Pro JobSearchAutomater % python3 -m src.cli apply --next --company nasdaq --profile backend_mumbai
+
+  Job:     DevOps Engineer Specialist (AWS & Java)
+  Company: Nasdaq
+  URL:     https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site/job/India---Mumbai---Maharashtra/DevOps-Engineer-Specialist--AWS---Java-_R0023554
+  ATS:     workday
+  Proceed with form fill? [y/n/quit]: y
+No visible element found for: Apply button
+No visible element found for: Apply Manually
+
+--- Form Filled ---
+Job:     DevOps Engineer Specialist (AWS & Java) @ Nasdaq
+Filled:  none
+Skipped: first_name, last_name, email, phone, city, zip_code, resume
+
+Submit? [y/n/skip]: 
+'''
+
+#8.
+I have posted several screenshots of Nasdaq. You filled in prematurely once again.
+'''
+(.venv) srinivasravi@Srinivass-MacBook-Pro JobSearchAutomater % python3 -m src.cli apply --next --company nasdaq --profile backend_mumbai
+
+  Job:     Quality Engineering - Senior Specialist
+  Company: Nasdaq
+  URL:     https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site/job/India---Mumbai---Maharashtra/Quality-Engineering---Senior-Specialist_R0025643
+  ATS:     workday
+  Proceed with form fill? [y/n/quit]: y
+
+--- Form Filled ---
+Job:     Quality Engineering - Senior Specialist @ Nasdaq
+Filled:  none
+Skipped: first_name, last_name, email, phone, city, zip_code, resume
+
+Submit? [y/n/skip]: 
+'''
+Image 1,2,3,4,5 each progressively shows screens and me filling details (Creating account) to reach the personal info step. I believe we should either memorize every single page for each career page correctly and if something fails lets utilize the "LLM-assisted form filling" strategy to learn and correct our codified approach. As a first baby step, demonstrate to me you have ability to reach till Image5 on your own. Focus on just Nasdaq. And only upto Image5, where the Given name is asked. use "srinivasrohan11@gmail.com" and password as something (let me know what you use). Once you are done, I will help you reach till the very end and submit 1 application by you completely. I will be completely hands off after running the python command. You must also wait till page finishes loading so that you don't haste anywhere. Remember you choose this architecture, so I am assuming your hands aren't tied.
+
+
 #7. 
 1. Kind of bummed that after trying all companies, either it's UNSUPPORTED_ATS, no jobs OR you prematurely fill form when there is no form on the screen loaded. Most of the times there is "Apply Now" button, and after that "Apply Manually" or "Apply with Resume" option. There is also sometimes create an account (email address, password, confirm password, etc). This is not standardized (I know that's a big problem. Maybe we can have custom button presser for each company's job link.) I have attached the screenshot for one of them. You must suggest fix or fix this premature filling asap.
 
