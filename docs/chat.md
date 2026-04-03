@@ -1,3 +1,94 @@
+#10.
+
+Same issue as last time. You reached till entering confirm password and checking the box, but failed to press "Create Account". I noticed there was scroll up and down the page this and last time too (it wasn't page refresh both times I think). I could see the button clearly in the viewport, all these changes and you still couldn't see it. This is why I suggested you to pause and reflect and update v2-sprint. Stop guessing and think (or research) deeply to fix these problems once and for all. Also, keep taking screenshots of the window so you can see these yourself and log and learn it yourself. Hopefully that's not too difficult to do for you.
+'''
+(.venv) srinivasravi@Srinivass-MacBook-Pro JobSearchAutomater % python3 -m src.cli apply --next --company nasdaq --profile backend_mumbai
+
+  Job:     Senior Analyst - Software Developer, Fintech
+  Company: Nasdaq
+  URL:     https://nasdaq.wd1.myworkdayjobs.com/Global_External_Site/job/India---Mumbai---Maharashtra/Senior-Analyst---Software-Developer--Fintech_R0025124
+  ATS:     workday
+  Proceed with form fill? [y/n/quit]: y
+Click failed for Apply button with selector [data-automation-id='jobPostingApplyButton']: Page.wait_for_selector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("[data-automation-id='jobPostingApplyButton']") to be visible
+
+Click failed for Apply button with selector button:has-text('Apply'): Page.wait_for_selector: Timeout 15000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text('Apply')") to be visible
+
+Click failed for Apply Manually with selector button:has-text('Apply Manually'): Page.wait_for_selector: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text('Apply Manually')") to be visible
+
+Fill failed for account email with selector [data-automation-id='createAccountEmail']: Page.wait_for_selector: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("[data-automation-id='createAccountEmail']") to be visible
+
+Click failed for Create Account with selector [data-automation-id='createAccountSubmitButton']: ElementHandle.click: Timeout 30000ms exceeded.
+Call log:
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div height="40" tabindex="0" role="button" font-size="14" class="css-zt8b9h" aria-label="Create Account" data-automation-id="click_filter"></div> intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div height="40" tabindex="0" role="button" font-size="14" class="css-zt8b9h" aria-label="Create Account" data-automation-id="click_filter"></div> intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    56 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <div height="40" tabindex="0" role="button" font-size="14" class="css-zt8b9h" aria-label="Create Account" data-automation-id="click_filter"></div> intercepts pointer events
+     - retrying click action
+       - waiting 500ms
+
+Click failed for Create Account with selector button:has-text('Create Account'): ElementHandle.click: Timeout 30000ms exceeded.
+Call log:
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div height="40" tabindex="0" role="button" font-size="14" class="css-zt8b9h" aria-label="Create Account" data-automation-id="click_filter"></div> intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <div height="40" tabindex="0" role="button" font-size="14" class="css-zt8b9h" aria-label="Create Account" data-automation-id="click_filter"></div> intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    57 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <div height="40" tabindex="0" role="button" font-size="14" class="css-zt8b9h" aria-label="Create Account" data-automation-id="click_filter"></div> intercepts pointer events
+     - retrying click action
+       - waiting 500ms
+
+Click failed for Create Account with selector a:has-text('Create Account'): Page.wait_for_selector: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("a:has-text('Create Account')") to be visible
+
+No element appeared for: Create Account (waited 5000ms per selector)
+
+--- Form Filled ---
+Job:     Senior Analyst - Software Developer, Fintech @ Nasdaq
+Filled:  email
+Skipped: first_name, last_name, phone, city, zip_code, resume
+
+'''
+
+
 #9.
 The screenshot image is of the page which was in front of me the whole time. You performed nothing. Can you stop pretending you have been able to successfully press even 1 button? The login screen didn't trip you up before. You are plain unable to press any button. And the audacity to keep pasting the form when there is no form in sight. How delusional are you? I explicitly suggested you to wait for things to load at the minimum but no, you didn't code that. This is the lowest stake ask, and you are folding. I am letting you try things out, but I am pissed that you have been going in circles and pretending like everything is ok. If you can see you are unable to press a button, ask yourself why and try it. Else tell me, we can figure out. But these unnecessary adding multipage and sign in handling code when you fail to press a button really shows how lacking your skills are. This is the time you get your act right.
 

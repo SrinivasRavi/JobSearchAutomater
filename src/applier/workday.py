@@ -6,8 +6,13 @@ Flow (from real Nasdaq testing):
 3. "Create Account/Sign In" page → fill email, password, consent → click "Create Account"
 4. Wait for "My Information" page to load
 5. Fill personal info fields on "My Information" page
+
+Key Workday quirk: ALL buttons are wrapped in a <div data-automation-id="click_filter">
+overlay that intercepts pointer events. We must use force=True on all clicks, or target
+the overlay div directly via page.locator().click(force=True).
 """
 import logging
+import os
 
 from src.applier.base import BaseFormFiller, FillResult
 from src.applier.registry import register_filler
@@ -15,18 +20,25 @@ from src.models.user_profile import UserProfile
 
 logger = logging.getLogger(__name__)
 
+SCREENSHOTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "data", "screenshots",
+)
+
 # Step 1: Click the Apply button on the job detail page
 _APPLY_BUTTON_SELECTORS = [
     "[data-automation-id='jobPostingApplyButton']",
-    "button:has-text('Apply')",
     "a:has-text('Apply')",
+    "button:has-text('Apply')",
 ]
 
 # Step 2: "Start Your Application" modal choices
 _APPLY_MANUALLY_SELECTORS = [
-    "button:has-text('Apply Manually')",
     "a:has-text('Apply Manually')",
+    "button:has-text('Apply Manually')",
+    "a:has-text('Apply manually')",
     "button:has-text('Apply manually')",
+    "a:has-text('Autofill with Resume')",
     "button:has-text('Autofill with Resume')",
 ]
 
@@ -38,69 +50,41 @@ _CREATE_ACCOUNT_EMAIL_SELECTORS = [
     "input[type='email']",
 ]
 
-_CREATE_ACCOUNT_PASSWORD_SELECTORS = [
-    "[data-automation-id='createAccountPassword']",
-    "input[data-automation-id='password']",
-    "input[aria-label*='Password']:not([aria-label*='Verify'])",
-    "input[type='password']",
-]
-
-_CREATE_ACCOUNT_VERIFY_PASSWORD_SELECTORS = [
-    "[data-automation-id='createAccountVerifyPassword']",
-    "input[data-automation-id='verifyPassword']",
-    "input[aria-label*='Verify New Password']",
-    "input[aria-label*='Verify Password']",
-    "input[aria-label*='Confirm Password']",
+_CREATE_ACCOUNT_BUTTON_SELECTORS = [
+    # Target the overlay div that actually receives clicks in Workday
+    "div[data-automation-id='click_filter'][aria-label='Create Account']",
+    "[data-automation-id='createAccountSubmitButton']",
+    "button:has-text('Create Account')",
 ]
 
 _CREATE_ACCOUNT_CONSENT_SELECTORS = [
     "[data-automation-id='createAccountCheckbox']",
     "input[type='checkbox'][data-automation-id*='consent']",
     "input[type='checkbox'][aria-label*='terms']",
-    # Generic: the only checkbox on the Create Account page
     "input[type='checkbox']",
 ]
 
-_CREATE_ACCOUNT_BUTTON_SELECTORS = [
-    "[data-automation-id='createAccountSubmitButton']",
-    "button:has-text('Create Account')",
-    "a:has-text('Create Account')",
-]
-
-# Step 3 alt: Sign In instead of Create Account (if account already exists)
-_SIGN_IN_SELECTORS = [
+# Sign In selectors (if account already exists)
+_SIGN_IN_LINK_SELECTORS = [
     "a:has-text('Sign In')",
     "button:has-text('Sign In')",
     "[data-automation-id='signInLink']",
 ]
 
-_SIGN_IN_EMAIL_SELECTORS = [
-    "[data-automation-id='signInEmailAddress']",
-    "input[aria-label*='Email']",
-    "input[type='email']",
-]
-
-_SIGN_IN_PASSWORD_SELECTORS = [
-    "[data-automation-id='signInPassword']",
-    "input[aria-label*='Password']",
-    "input[type='password']",
-]
-
 _SIGN_IN_BUTTON_SELECTORS = [
+    "div[data-automation-id='click_filter'][aria-label='Sign In']",
     "[data-automation-id='signInSubmitButton']",
     "button:has-text('Sign In')",
 ]
 
-# Workday uses data-automation-id attributes and aria-labels for form fields
+# Workday form field selectors (My Information page)
 _FIELD_SELECTORS = [
     ("first_name", "[data-automation-id='legalNameSection_firstName']"),
     ("first_name", "input[aria-label*='Given Name']"),
     ("first_name", "input[aria-label*='First Name']"),
-    ("first_name", "input[aria-label*='firstName']"),
     ("last_name", "[data-automation-id='legalNameSection_lastName']"),
     ("last_name", "input[aria-label*='Family Name']"),
     ("last_name", "input[aria-label*='Last Name']"),
-    ("last_name", "input[aria-label*='lastName']"),
     ("email", "[data-automation-id='email']"),
     ("email", "input[aria-label*='Email']"),
     ("phone", "[data-automation-id='phone-number']"),
@@ -122,224 +106,217 @@ _SUBMIT_SELECTORS = [
 
 
 class WorkdayFiller(BaseFormFiller):
+    """Workday ATS form filler.
+
+    Uses Playwright locators with force=True for all clicks because Workday
+    wraps buttons in <div data-automation-id="click_filter"> overlays that
+    intercept pointer events.
+    """
+
+    def __init__(self, profile: UserProfile):
+        super().__init__(profile)
+        self._screenshot_counter = 0
+
     def platform_name(self) -> str:
         return "workday"
 
     def can_handle(self, url: str) -> bool:
         return "myworkdayjobs.com" in url or "workday.com" in url
 
-    def _wait_and_click(self, page, selectors: list[str], description: str, timeout: int = 10000) -> bool:
-        """Wait for any of the selectors to appear, then click. Returns True if clicked."""
+    def _take_screenshot(self, page, label: str) -> None:
+        """Take a debug screenshot at each navigation step."""
+        os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
+        self._screenshot_counter += 1
+        path = os.path.join(SCREENSHOTS_DIR, f"workday_step_{self._screenshot_counter}_{label}.png")
+        try:
+            page.screenshot(path=path)
+            logger.info("Screenshot saved: %s", path)
+        except Exception as e:
+            logger.debug("Screenshot failed: %s", e)
+
+    def _click(self, page, selector: str, description: str, timeout: int = 10000) -> bool:
+        """Click an element using Playwright locator with force=True.
+
+        force=True bypasses Workday's click_filter overlay divs that
+        intercept pointer events on all buttons.
+        """
+        try:
+            locator = page.locator(selector).first
+            locator.wait_for(state="visible", timeout=timeout)
+            logger.info("Clicking %s: %s", description, selector)
+            locator.click(force=True, timeout=5000)
+            return True
+        except Exception as e:
+            logger.debug("Click failed for %s [%s]: %s", description, selector, e)
+            return False
+
+    def _click_any(self, page, selectors: list[str], description: str, timeout: int = 10000) -> bool:
+        """Try each selector, click the first one found. Uses force=True."""
         for selector in selectors:
-            try:
-                el = page.wait_for_selector(selector, state="visible", timeout=timeout)
-                if el:
-                    logger.info("Clicking %s: %s", description, selector)
-                    el.scroll_into_view_if_needed()
-                    page.wait_for_timeout(500)
-                    el.click()
-                    return True
-            except TimeoutError:
-                logger.debug("Selector timed out for %s: %s", description, selector)
-            except Exception as e:
-                logger.warning("Click failed for %s with selector %s: %s", description, selector, e)
-        logger.warning("No element appeared for: %s (waited %dms per selector)", description, timeout)
+            if self._click(page, selector, description, timeout=timeout):
+                return True
+        logger.warning("No element found for: %s", description)
         return False
 
-    def _wait_and_fill(self, page, selectors: list[str], value: str, description: str, timeout: int = 10000) -> bool:
-        """Wait for any of the selectors to appear, then fill. Returns True if filled."""
-        for selector in selectors:
-            try:
-                el = page.wait_for_selector(selector, state="visible", timeout=timeout)
-                if el:
-                    logger.info("Filling %s: %s", description, selector)
-                    el.scroll_into_view_if_needed()
-                    page.wait_for_timeout(300)
-                    el.fill(value)
-                    return True
-            except TimeoutError:
-                logger.debug("Selector timed out for %s: %s", description, selector)
-            except Exception as e:
-                logger.warning("Fill failed for %s with selector %s: %s", description, selector, e)
-        logger.warning("No element appeared for: %s (waited %dms per selector)", description, timeout)
-        return False
+    def _fill_field(self, page, selector: str, value: str, description: str, timeout: int = 10000) -> bool:
+        """Fill a field using Playwright locator with auto-waiting."""
+        try:
+            locator = page.locator(selector).first
+            locator.wait_for(state="visible", timeout=timeout)
+            logger.info("Filling %s: %s", description, selector)
+            locator.fill(value)
+            return True
+        except Exception as e:
+            logger.debug("Fill failed for %s [%s]: %s", description, selector, e)
+            return False
 
-    def _click_first_visible(self, page, selectors: list[str], description: str) -> bool:
-        """Try each selector without waiting (for fields that should already be on-screen)."""
+    def _fill_any(self, page, selectors: list[str], value: str, description: str, timeout: int = 10000) -> bool:
+        """Try each selector, fill the first one found."""
         for selector in selectors:
-            try:
-                el = page.query_selector(selector)
-                if el and el.is_visible():
-                    logger.info("Clicking %s: %s", description, selector)
-                    el.click()
-                    return True
-            except Exception as e:
-                logger.debug("Selector %s failed: %s", selector, e)
-        logger.warning("No visible element found for: %s", description)
-        return False
-
-    def _fill_first_visible(self, page, selectors: list[str], value: str, description: str) -> bool:
-        """Try each selector without waiting (for fields that should already be on-screen)."""
-        for selector in selectors:
-            try:
-                el = page.query_selector(selector)
-                if el and el.is_visible():
-                    logger.info("Filling %s: %s", description, selector)
-                    el.fill(value)
-                    return True
-            except Exception as e:
-                logger.debug("Selector %s failed: %s", selector, e)
-        logger.warning("No visible element found for: %s", description)
+            if self._fill_field(page, selector, value, description, timeout=timeout):
+                return True
+        logger.warning("No element found to fill: %s", description)
         return False
 
     def _navigate_to_form(self, page) -> bool:
-        """Navigate through Apply → modal → account creation → form. Returns True if form loaded."""
+        """Navigate through Apply → modal → account creation → form."""
 
-        # Step 1: Wait for and click "Apply" button on job detail page
-        logger.info("Step 1: Waiting for Apply button on job detail page")
-        if self._wait_and_click(page, _APPLY_BUTTON_SELECTORS, "Apply button", timeout=15000):
+        # Step 1: Click "Apply" button on job detail page
+        logger.info("=== Step 1: Click Apply button ===")
+        self._take_screenshot(page, "before_apply")
+        if self._click_any(page, _APPLY_BUTTON_SELECTORS, "Apply button", timeout=15000):
             page.wait_for_timeout(3000)
+            self._take_screenshot(page, "after_apply")
         else:
-            logger.warning("Apply button not found — page may not have loaded correctly")
+            logger.error("Apply button not found — cannot proceed")
+            self._take_screenshot(page, "apply_failed")
             return False
 
-        # Step 2: Wait for and handle "Start Your Application" modal
-        logger.info("Step 2: Waiting for Apply Manually in modal")
-        if self._wait_and_click(page, _APPLY_MANUALLY_SELECTORS, "Apply Manually", timeout=10000):
+        # Step 2: Handle "Start Your Application" modal
+        logger.info("=== Step 2: Click Apply Manually in modal ===")
+        if self._click_any(page, _APPLY_MANUALLY_SELECTORS, "Apply Manually", timeout=10000):
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(3000)
+            self._take_screenshot(page, "after_apply_manually")
 
         # Step 3: Handle "Create Account / Sign In" page
-        # Check if we're on the Create Account page by looking for the page heading or form
-        logger.info("Step 3: Checking for Create Account page")
+        logger.info("=== Step 3: Account creation or sign-in ===")
         if self._is_create_account_page(page):
-            logger.info("Create Account page detected — filling account creation form")
+            logger.info("Create Account page detected")
             self._handle_create_account(page)
+            self._take_screenshot(page, "after_create_account")
         elif self._is_sign_in_page(page):
-            logger.info("Sign In page detected — signing in")
+            logger.info("Sign In page detected")
             self._handle_sign_in(page)
+            self._take_screenshot(page, "after_sign_in")
         else:
-            logger.info("No account page detected — may already be on form")
+            logger.info("No account page — may already be on form")
+            self._take_screenshot(page, "no_account_page")
 
         return True
 
     def _is_create_account_page(self, page) -> bool:
-        """Check if the current page is a Create Account page."""
-        for selector in [
-            "h2:has-text('Create Account')",
-            "h1:has-text('Create Account')",
-            "button:has-text('Create Account')",
-            "[data-automation-id='createAccountSubmitButton']",
-        ]:
-            try:
-                el = page.wait_for_selector(selector, state="visible", timeout=5000)
-                if el:
-                    return True
-            except Exception:
-                continue
-        return False
+        """Check if we're on the Create Account page."""
+        try:
+            page.locator("h2:has-text('Create Account'), h1:has-text('Create Account')").first.wait_for(
+                state="visible", timeout=5000
+            )
+            return True
+        except Exception:
+            return False
 
     def _is_sign_in_page(self, page) -> bool:
-        """Check if the current page is a Sign In page."""
-        for selector in [
-            "h2:has-text('Sign In')",
-            "h1:has-text('Sign In')",
-            "[data-automation-id='signInSubmitButton']",
-        ]:
-            try:
-                el = page.wait_for_selector(selector, state="visible", timeout=3000)
-                if el:
-                    return True
-            except Exception:
-                continue
-        return False
+        """Check if we're on a Sign In page."""
+        try:
+            page.locator("h2:has-text('Sign In'), h1:has-text('Sign In')").first.wait_for(
+                state="visible", timeout=3000
+            )
+            return True
+        except Exception:
+            return False
 
     def _handle_create_account(self, page) -> None:
         """Fill the Create Account form and submit it."""
         profile = self.profile
 
         # Fill email
-        self._wait_and_fill(
+        self._fill_any(
             page, _CREATE_ACCOUNT_EMAIL_SELECTORS, profile.email, "account email", timeout=10000
         )
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(500)
 
-        # Fill password
+        # Fill password fields
         password = profile.ats_password
         if not password:
             logger.error("No ats_password in profile — cannot create account")
             return
 
-        # Find and fill password fields
-        self._fill_password_fields(page, password)
-        page.wait_for_timeout(1000)
+        password_inputs = page.locator("input[type='password']")
+        count = password_inputs.count()
+        logger.info("Found %d password fields", count)
+        if count >= 2:
+            password_inputs.nth(0).fill(password)
+            page.wait_for_timeout(300)
+            password_inputs.nth(1).fill(password)
+        elif count == 1:
+            password_inputs.nth(0).fill(password)
+        page.wait_for_timeout(500)
 
         # Check consent checkbox
-        self._check_consent(page)
-        page.wait_for_timeout(1000)
+        try:
+            checkbox = page.locator("input[type='checkbox']").first
+            if checkbox.is_visible() and not checkbox.is_checked():
+                logger.info("Checking consent checkbox")
+                checkbox.click(force=True)
+                page.wait_for_timeout(500)
+        except Exception as e:
+            logger.warning("Consent checkbox not found: %s", e)
 
-        # Click Create Account
-        if self._wait_and_click(page, _CREATE_ACCOUNT_BUTTON_SELECTORS, "Create Account", timeout=5000):
-            logger.info("Clicked Create Account — waiting for next page")
+        self._take_screenshot(page, "before_create_account_click")
+
+        # Click Create Account button
+        logger.info("Clicking Create Account button")
+        if self._click_any(page, _CREATE_ACCOUNT_BUTTON_SELECTORS, "Create Account", timeout=10000):
+            logger.info("Clicked Create Account — waiting for next page to load")
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(5000)
-
-    def _fill_password_fields(self, page, password: str) -> None:
-        """Fill both password and verify password fields."""
-        # Get all password inputs on the page
-        password_inputs = page.query_selector_all("input[type='password']")
-        if len(password_inputs) >= 2:
-            # First is password, second is verify
-            logger.info("Found %d password fields — filling both", len(password_inputs))
-            if password_inputs[0].is_visible():
-                password_inputs[0].fill(password)
-            if password_inputs[1].is_visible():
-                password_inputs[1].fill(password)
-        elif len(password_inputs) == 1:
-            # Only one password field (sign-in page?)
-            if password_inputs[0].is_visible():
-                password_inputs[0].fill(password)
+            self._take_screenshot(page, "after_create_account_submit")
         else:
-            # Fallback to named selectors
-            self._fill_first_visible(
-                page, _CREATE_ACCOUNT_PASSWORD_SELECTORS, password, "password"
-            )
-            self._fill_first_visible(
-                page, _CREATE_ACCOUNT_VERIFY_PASSWORD_SELECTORS, password, "verify password"
-            )
-
-    def _check_consent(self, page) -> None:
-        """Check the consent/terms checkbox if present."""
-        for selector in _CREATE_ACCOUNT_CONSENT_SELECTORS:
-            try:
-                el = page.query_selector(selector)
-                if el and el.is_visible():
-                    # Only click if not already checked
-                    if not el.is_checked():
-                        logger.info("Checking consent checkbox: %s", selector)
-                        el.click()
-                    else:
-                        logger.info("Consent checkbox already checked")
-                    return
-            except Exception as e:
-                logger.debug("Consent selector %s failed: %s", selector, e)
+            logger.error("Failed to click Create Account button")
+            self._take_screenshot(page, "create_account_click_failed")
 
     def _handle_sign_in(self, page) -> None:
         """Sign in with existing account."""
         profile = self.profile
-        self._wait_and_fill(
-            page, _SIGN_IN_EMAIL_SELECTORS, profile.email, "sign-in email", timeout=10000
+
+        # Fill email
+        self._fill_any(
+            page, [
+                "[data-automation-id='signInEmailAddress']",
+                "input[aria-label*='Email']",
+                "input[type='email']",
+            ],
+            profile.email, "sign-in email", timeout=10000
         )
+
+        # Fill password
         if profile.ats_password:
-            password_inputs = page.query_selector_all("input[type='password']")
-            if password_inputs and password_inputs[0].is_visible():
-                password_inputs[0].fill(profile.ats_password)
-        if self._wait_and_click(page, _SIGN_IN_BUTTON_SELECTORS, "Sign In", timeout=5000):
+            password_input = page.locator("input[type='password']").first
+            try:
+                password_input.wait_for(state="visible", timeout=5000)
+                password_input.fill(profile.ats_password)
+            except Exception as e:
+                logger.warning("Sign-in password field not found: %s", e)
+
+        # Click Sign In
+        if self._click_any(page, _SIGN_IN_BUTTON_SELECTORS, "Sign In", timeout=5000):
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(5000)
 
     def fill_form(self, page) -> FillResult:
         self._navigate_to_form(page)
+
+        self._take_screenshot(page, "before_fill_form")
 
         profile = self.profile
         field_values = {
@@ -358,23 +335,32 @@ class WorkdayFiller(BaseFormFiller):
         for field_name, selector in _FIELD_SELECTORS:
             if field_name in seen_fields:
                 continue
-            el = page.query_selector(selector)
-            if el and el.is_visible():
-                el.fill(field_values[field_name])
-                filled.append(field_name)
-                seen_fields.add(field_name)
+            try:
+                locator = page.locator(selector).first
+                if locator.is_visible():
+                    locator.fill(field_values[field_name])
+                    filled.append(field_name)
+                    seen_fields.add(field_name)
+                    logger.info("Filled %s via %s", field_name, selector)
+            except Exception:
+                pass
 
         for field_name in field_values:
             if field_name not in seen_fields:
                 skipped.append(field_name)
 
         # Resume upload
-        file_el = page.query_selector("input[type='file']")
-        if file_el and file_el.is_visible():
-            page.set_input_files("input[type='file']", profile.resume_path_hint)
-            filled.append("resume")
-        else:
+        file_input = page.locator("input[type='file']")
+        try:
+            if file_input.count() > 0 and file_input.first.is_visible():
+                page.set_input_files("input[type='file']", profile.resume_path_hint)
+                filled.append("resume")
+            else:
+                skipped.append("resume")
+        except Exception:
             skipped.append("resume")
+
+        self._take_screenshot(page, "after_fill_form")
 
         return FillResult(
             success=len(filled) > 0,
@@ -384,9 +370,7 @@ class WorkdayFiller(BaseFormFiller):
 
     def submit(self, page) -> bool:
         for selector in _SUBMIT_SELECTORS:
-            btn = page.query_selector(selector)
-            if btn and btn.is_visible():
-                btn.click()
+            if self._click(page, selector, "Submit", timeout=3000):
                 return True
         return False
 
