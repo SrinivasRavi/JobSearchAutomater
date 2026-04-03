@@ -55,6 +55,17 @@ class JobRepository:
             return None
         return self._row_to_job(row)
 
+    def get_by_link(self, url: str) -> Optional[Job]:
+        """Look up a job by its clean_job_link or job_link."""
+        cursor = self._db.connection.execute(
+            "SELECT * FROM jobs WHERE clean_job_link = ? OR job_link = ? LIMIT 1",
+            (url, url),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return self._row_to_job(row)
+
     def count(self, status: Optional[ApplicationStatus] = None) -> int:
         if status:
             cursor = self._db.connection.execute(

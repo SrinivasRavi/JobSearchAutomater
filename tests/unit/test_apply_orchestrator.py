@@ -1,12 +1,12 @@
 """Tests for the apply orchestrator — TDD for Task 4."""
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import pytest
 
 from src.applier.base import FillResult
-from src.applier.orchestrator import ApplyOrchestrator, ApplyResult
+from src.applier.orchestrator import ApplyOrchestrator, ApplyResult, check_ats_support
 from src.models.user_profile import UserProfile
 from src.persistence.database import Database
-from src.persistence.repository import ApplicationRepository, JobRepository
+from src.persistence.repository import ApplicationRepository
 
 
 def _make_profile() -> UserProfile:
@@ -26,17 +26,6 @@ def _make_profile() -> UserProfile:
     )
 
 
-def _make_job_row() -> dict:
-    return {
-        "job_id": 42,
-        "company_name": "Acme",
-        "job_title": "Backend Engineer",
-        "clean_job_link": "https://acme.wd1.myworkdayjobs.com/apply/42",
-        "job_link": "https://acme.wd1.myworkdayjobs.com/apply/42",
-        "application_status": "NOT_APPLIED",
-    }
-
-
 @pytest.fixture
 def db():
     d = Database(":memory:")
@@ -48,11 +37,6 @@ def db():
 @pytest.fixture
 def app_repo(db):
     return ApplicationRepository(db.connection)
-
-
-@pytest.fixture
-def job_repo(db):
-    return JobRepository(db)
 
 
 @pytest.fixture
@@ -73,46 +57,50 @@ def mock_filler():
     return filler
 
 
-class TestApplyOrchestratorUnsupportedATS:
-    def test_returns_unsupported_when_no_filler(self, db, app_repo, profile):
-        orch = ApplyOrchestrator(db.connection, profile)
+class TestCheckAtsSupport:
+    def test_returns_none_for_unknown_url(self, profile):
         with patch("src.applier.orchestrator.get_filler_for_url", return_value=None):
-            result = orch.apply_to_url(
-                job_url="https://greenhouse.io/apply/123",
-                job_id=None,
-                job_title="SWE",
-                company_name="Acme",
-            )
-        assert result.status == "FAILED"
-        assert result.failure_reason == "UNSUPPORTED_ATS"
+            assert check_ats_support("https://greenhouse.io/apply", profile) is None
 
-    def test_records_failed_application_for_unsupported(self, db, app_repo, profile):
+    def test_returns_filler_for_known_url(self, profile):
+        mock = MagicMock()
+        with patch("src.applier.orchestrator.get_filler_for_url", return_value=mock):
+            result = check_ats_support("https://acme.wd1.myworkdayjobs.com/apply", profile)
+            assert result is mock
+
+
+class TestMarkUnsupported:
+    def test_records_failed_application(self, db, app_repo, profile):
         orch = ApplyOrchestrator(db.connection, profile)
-        with patch("src.applier.orchestrator.get_filler_for_url", return_value=None):
-            orch.apply_to_url(
-                job_url="https://greenhouse.io/apply/123",
-                job_id=None,
-                job_title="SWE",
-                company_name="Acme",
-            )
+        app_id = orch.mark_unsupported(
+            job_url="https://greenhouse.io/apply/123",
+            job_id=None,
+            job_title="SWE",
+            company_name="Acme",
+        )
+        assert app_id > 0
         apps = app_repo.list_applications()
         assert len(apps) == 1
         assert apps[0]["status"] == "FAILED"
         assert apps[0]["failure_reason"] == "UNSUPPORTED_ATS"
 
+    def test_stores_profile_id(self, db, app_repo, profile):
+        orch = ApplyOrchestrator(db.connection, profile)
+        orch.mark_unsupported(job_url="https://x.com", job_title="SWE", company_name="X")
+        apps = app_repo.list_applications()
+        assert apps[0]["profile_name"] == "backend_mumbai"  # profile_id, not profile_name
 
-class TestApplyOrchestratorHumanConfirm:
+
+class TestApplyWithFiller:
     def _run_with_answer(self, answer, db, profile, mock_filler):
         """Run the orchestrator with a mocked filler and user input."""
         orch = ApplyOrchestrator(db.connection, profile)
         mock_page = MagicMock()
         mock_page.url = "https://acme.wd1.myworkdayjobs.com/apply/42"
 
-        with patch("src.applier.orchestrator.get_filler_for_url", return_value=mock_filler), \
-             patch("src.applier.orchestrator.sync_playwright") as mock_pw, \
+        with patch("src.applier.orchestrator.sync_playwright") as mock_pw, \
              patch("builtins.input", return_value=answer), \
              patch("os.makedirs"):
-            # Set up playwright context manager chain
             mock_browser = MagicMock()
             mock_context = MagicMock()
             mock_browser.new_context.return_value.__enter__ = MagicMock(return_value=mock_context)
@@ -125,7 +113,8 @@ class TestApplyOrchestratorHumanConfirm:
             ))
             mock_pw.return_value.__exit__ = MagicMock(return_value=False)
 
-            result = orch.apply_to_url(
+            result = orch.apply_with_filler(
+                filler=mock_filler,
                 job_url="https://acme.wd1.myworkdayjobs.com/apply/42",
                 job_id=None,
                 job_title="Backend Engineer",
@@ -155,7 +144,7 @@ class TestApplyOrchestratorHumanConfirm:
         apps = app_repo.list_applications()
         assert len(apps) == 1
         assert apps[0]["status"] == "SUBMITTED"
-        assert apps[0]["profile_name"] == "backend"
+        assert apps[0]["profile_name"] == "backend_mumbai"  # profile_id stored
         assert apps[0]["company_name"] == "Acme"
 
     def test_fill_result_stored_in_result(self, db, profile, mock_filler):

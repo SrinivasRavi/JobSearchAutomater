@@ -140,18 +140,43 @@ This opens a **visible Chromium browser**, fills the form, then pauses for your 
 # Apply to the next pending job (uses first available profile)
 python3 -m src.cli apply --next
 
-# Apply to next 5 jobs
+# Apply to next 5 jobs (prompts for each)
 python3 -m src.cli apply --next --limit 5
 
-# Apply to a specific job by ID
+# Apply to a specific job by ID (shown in apply-queue output)
 python3 -m src.cli apply --job-id 42
+
+# Apply by job URL
+python3 -m src.cli apply --job-link "https://nasdaq.wd1.myworkdayjobs.com/apply/123"
 
 # Use a specific profile
 python3 -m src.cli apply --next --profile backend_mumbai
-python3 -m src.cli apply --job-id 42 --profile ai_remote
+python3 -m src.cli apply --job-id 42 --profile backend_pune
 ```
 
-When the form is filled, the terminal will show:
+Each job gets a **two-step prompt**:
+
+Step 1 — Preview and proceed:
+```
+  Job:     Backend Engineer
+  Company: Acme Corp
+  URL:     https://acme.wd1.myworkdayjobs.com/apply/42
+  ATS:     workday
+  Proceed with form fill? [y/n/quit]:
+```
+- `y` — opens visible Chromium browser and fills the form
+- `n` — skip this job (stays in queue for next time)
+- `quit` — stop processing
+
+If ATS is unsupported (no filler), you're asked whether to mark it:
+```
+  ATS:     unsupported (no filler for this URL)
+  Mark as unsupported and skip? [y/n/quit]:
+```
+- `y` — marks as UNSUPPORTED_ATS (removed from queue)
+- `n` — skip (stays in queue for next time)
+
+Step 2 — After form is filled, review in browser:
 ```
 --- Form Filled ---
 Job:     Backend Engineer @ Acme Corp
@@ -162,7 +187,7 @@ Submit? [y/n/skip]:
 ```
 - `y` — clicks Submit, records SUBMITTED
 - `n` — closes browser, records FAILED (HUMAN_REJECTED)
-- `skip` — closes browser, no status change
+- `skip` — closes browser, records SKIPPED
 
 ### View application history and stats
 

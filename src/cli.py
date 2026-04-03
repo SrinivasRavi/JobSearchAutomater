@@ -177,6 +177,49 @@ def cmd_list_profiles(args, repo):
     print()
 
 
+def _apply_single_job(orch, profile, job_url, job_id, job_title, company_name):
+    """Handle a single apply attempt: check ATS, prompt, apply. Returns True to continue, False to quit."""
+    from src.applier.orchestrator import check_ats_support
+
+    print(f"\n  Job:     {job_title}")
+    print(f"  Company: {company_name}")
+    print(f"  URL:     {job_url}")
+
+    filler = check_ats_support(job_url, profile)
+    if filler is None:
+        print(f"  ATS:     unsupported (no filler for this URL)")
+        answer = input("  Mark as unsupported and skip? [y/n/quit]: ").strip().lower()
+        if answer == "quit" or answer == "q":
+            return False
+        if answer == "y":
+            orch.mark_unsupported(
+                job_url=job_url, job_id=job_id,
+                job_title=job_title, company_name=company_name,
+            )
+            print("  -> Marked as UNSUPPORTED_ATS")
+        else:
+            print("  -> Skipped (will appear again next time)")
+        return True
+
+    print(f"  ATS:     {filler.platform_name()}")
+    answer = input("  Proceed with form fill? [y/n/quit]: ").strip().lower()
+    if answer == "quit" or answer == "q":
+        return False
+    if answer != "y":
+        print("  -> Skipped (will appear again next time)")
+        return True
+
+    result = orch.apply_with_filler(
+        filler=filler,
+        job_url=job_url,
+        job_id=job_id,
+        job_title=job_title,
+        company_name=company_name,
+    )
+    print(f"  -> {result.status}" + (f" ({result.failure_reason})" if result.failure_reason else ""))
+    return True
+
+
 def cmd_apply(args, db):
     """Apply to a job using Playwright."""
     from src.models.user_profile import load_profile, list_profiles as list_user_profiles
@@ -199,7 +242,6 @@ def cmd_apply(args, db):
         print(f"Error: {e}")
         return
 
-    app_repo = ApplicationRepository(db.connection)
     job_repo = JobRepository(db)
     orch = ApplyOrchestrator(db.connection, profile)
 
@@ -208,30 +250,46 @@ def cmd_apply(args, db):
         if not job:
             print(f"Job {args.job_id} not found.")
             return
-        result = orch.apply_to_url(
-            job_url=job.clean_job_link,
-            job_id=job.job_id,
-            job_title=job.job_title,
-            company_name=job.company_name,
+        _apply_single_job(
+            orch, profile, job.clean_job_link,
+            job.job_id, job.job_title, job.company_name,
         )
-        print(f"Result: {result.status}" + (f" ({result.failure_reason})" if result.failure_reason else ""))
+
+    elif args.job_link:
+        job = job_repo.get_by_link(args.job_link)
+        if job:
+            _apply_single_job(
+                orch, profile, job.clean_job_link,
+                job.job_id, job.job_title, job.company_name,
+            )
+        else:
+            # Job not in our DB — apply directly to URL
+            print(f"  Job not in database. Applying directly to URL.")
+            _apply_single_job(
+                orch, profile, args.job_link,
+                None, "", "",
+            )
 
     elif args.next:
-        pending = app_repo.get_pending_jobs(limit=args.limit or 1)
+        app_repo = ApplicationRepository(db.connection)
+        # Fetch more than needed to allow for skips
+        pending = app_repo.get_pending_jobs(limit=args.limit * 5)
         if not pending:
             print("No pending jobs in the apply queue.")
             return
+        applied = 0
         for row in pending:
-            print(f"\nApplying to: {row['job_title']} @ {row['company_name']}")
-            result = orch.apply_to_url(
-                job_url=row["clean_job_link"],
-                job_id=row["job_id"],
-                job_title=row["job_title"],
-                company_name=row["company_name"],
+            if applied >= args.limit:
+                break
+            keep_going = _apply_single_job(
+                orch, profile, row["clean_job_link"],
+                row["job_id"], row["job_title"], row["company_name"],
             )
-            print(f"Result: {result.status}" + (f" ({result.failure_reason})" if result.failure_reason else ""))
+            if not keep_going:
+                break
+            applied += 1
     else:
-        print("Specify --job-id or --next")
+        print("Specify --job-id, --job-link, or --next")
 
 
 def cmd_apply_queue(args, db):
@@ -349,6 +407,7 @@ def main():
     # apply
     p_apply = subparsers.add_parser("apply", help="Apply to a job using Playwright")
     p_apply.add_argument("--job-id", type=int, help="Apply to this specific job ID")
+    p_apply.add_argument("--job-link", help="Apply to a job by its URL")
     p_apply.add_argument("--next", action="store_true", help="Apply to next pending job")
     p_apply.add_argument("--limit", "-n", type=int, default=1, help="Number of jobs (with --next)")
     p_apply.add_argument("--profile", "-p", help="Profile name to use (default: first available)")
