@@ -70,7 +70,7 @@ class WorkdayFiller(BaseFormFiller):
         # Resume upload
         file_el = page.query_selector("input[type='file']")
         if file_el and file_el.is_visible():
-            page.set_input_files("input[type='file']", profile.resume_path)
+            page.set_input_files("input[type='file']", profile.resume_path_hint)
             filled.append("resume")
         else:
             skipped.append("resume")

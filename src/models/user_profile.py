@@ -9,31 +9,38 @@ import yaml
 
 @dataclass
 class UserProfile:
+    # Identity
+    profile_id: str
     profile_name: str
     first_name: str
     last_name: str
+    full_name: str
     email: str
     phone: str
+    # Location
     city: str
     state: str
     country: str
     zip_code: str
-    resume_path: str
+    # Links
     linkedin_url: str = ""
     github_url: str = ""
     portfolio_url: str = ""
-    work_authorized: bool = True
-    sponsorship_required: bool = False
+    # Employment summary
     years_of_experience: int = 0
-    current_company: str = ""
-    current_title: str = ""
-    notice_period_days: int = 30
-    degree: str = ""
-    major: str = ""
-    university: str = ""
-    graduation_year: int = 0
-    preferred_roles: list[str] = field(default_factory=list)
-    default_answers: dict[str, str] = field(default_factory=dict)
+    notice_period_days: int = 0
+    # Work history (list of {company, title, from, to, currently_working_here})
+    experience: list[dict] = field(default_factory=list)
+    # Education (list of {degree, major, university, graduation_year})
+    education: list[dict] = field(default_factory=list)
+    # Preferences
+    target_roles: list[str] = field(default_factory=list)
+    target_locations: list[str] = field(default_factory=list)
+    # Documents
+    resume_file_name: str = ""
+    resume_path_hint: str = ""
+    # Catch-all for ATS-specific answers
+    custom_answers: dict[str, str] = field(default_factory=dict)
 
     def summary(self) -> str:
         """One-line summary: 'Backend Mumbai (srini@example.com)'"""
@@ -42,31 +49,29 @@ class UserProfile:
     def to_dict(self) -> dict:
         """For JSON serialization."""
         return {
+            "profile_id": self.profile_id,
             "profile_name": self.profile_name,
             "first_name": self.first_name,
             "last_name": self.last_name,
+            "full_name": self.full_name,
             "email": self.email,
             "phone": self.phone,
             "city": self.city,
             "state": self.state,
             "country": self.country,
             "zip_code": self.zip_code,
-            "resume_path": self.resume_path,
             "linkedin_url": self.linkedin_url,
             "github_url": self.github_url,
             "portfolio_url": self.portfolio_url,
-            "work_authorized": self.work_authorized,
-            "sponsorship_required": self.sponsorship_required,
             "years_of_experience": self.years_of_experience,
-            "current_company": self.current_company,
-            "current_title": self.current_title,
             "notice_period_days": self.notice_period_days,
-            "degree": self.degree,
-            "major": self.major,
-            "university": self.university,
-            "graduation_year": self.graduation_year,
-            "preferred_roles": list(self.preferred_roles),
-            "default_answers": dict(self.default_answers),
+            "experience": list(self.experience),
+            "education": list(self.education),
+            "target_roles": list(self.target_roles),
+            "target_locations": list(self.target_locations),
+            "resume_file_name": self.resume_file_name,
+            "resume_path_hint": self.resume_path_hint,
+            "custom_answers": dict(self.custom_answers),
         }
 
 
@@ -122,33 +127,34 @@ def list_profiles(profiles_dir: Optional[str] = None) -> list[tuple[str, str]]:
 
 def _parse_profile(data: dict) -> "UserProfile":
     """Parse raw YAML dict into UserProfile, with defaults for missing fields."""
-    name_block = data.get("name") or {}
     location_block = data.get("location") or {}
-    education_block = data.get("education") or {}
+    links_block = data.get("links") or {}
+    employment_block = data.get("employment") or {}
+    work_prefs_block = data.get("work_preferences") or {}
+    documents_block = data.get("documents") or {}
+
     return UserProfile(
+        profile_id=data.get("profile_id", ""),
         profile_name=data.get("profile_name", ""),
-        first_name=name_block.get("first", ""),
-        last_name=name_block.get("last", ""),
+        first_name=data.get("first_name", ""),
+        last_name=data.get("last_name", ""),
+        full_name=data.get("full_name", ""),
         email=data.get("email", ""),
         phone=data.get("phone", ""),
         city=location_block.get("city", ""),
         state=location_block.get("state", ""),
         country=location_block.get("country", ""),
-        zip_code=str(location_block.get("zip", "")),
-        resume_path=data.get("resume_path", ""),
-        linkedin_url=data.get("linkedin_url", ""),
-        github_url=data.get("github_url", ""),
-        portfolio_url=data.get("portfolio_url", ""),
-        work_authorized=bool(data.get("work_authorized", True)),
-        sponsorship_required=bool(data.get("sponsorship_required", False)),
-        years_of_experience=int(data.get("years_of_experience", 0)),
-        current_company=data.get("current_company", ""),
-        current_title=data.get("current_title", ""),
-        notice_period_days=int(data.get("notice_period_days", 30)),
-        degree=education_block.get("degree", ""),
-        major=education_block.get("major", ""),
-        university=education_block.get("university", ""),
-        graduation_year=int(education_block.get("graduation_year", 0)),
-        preferred_roles=list(data.get("preferred_roles") or []),
-        default_answers=dict(data.get("default_answers") or {}),
+        zip_code=str(location_block.get("zip_code", "")),
+        linkedin_url=links_block.get("linkedin_url", ""),
+        github_url=links_block.get("github_url", ""),
+        portfolio_url=links_block.get("portfolio_url", ""),
+        years_of_experience=int(employment_block.get("years_of_experience", 0)),
+        notice_period_days=int(employment_block.get("notice_period_days", 0)),
+        experience=list(data.get("experience") or []),
+        education=list(data.get("education") or []),
+        target_roles=list(work_prefs_block.get("target_roles") or []),
+        target_locations=list(work_prefs_block.get("target_locations") or []),
+        resume_file_name=documents_block.get("resume_file_name", ""),
+        resume_path_hint=documents_block.get("resume_path_hint", ""),
+        custom_answers=dict(data.get("custom_answers") or {}),
     )

@@ -11,16 +11,18 @@ from src.persistence.repository import ApplicationRepository, JobRepository
 
 def _make_profile() -> UserProfile:
     return UserProfile(
+        profile_id="backend_mumbai",
         profile_name="backend",
         first_name="Srini",
         last_name="Ravi",
+        full_name="Srini Ravi",
         email="srini@example.com",
         phone="+91-9876543210",
         city="Mumbai",
         state="Maharashtra",
         country="India",
         zip_code="400001",
-        resume_path="resume.pdf",
+        resume_path_hint="resume.pdf",
     )
 
 

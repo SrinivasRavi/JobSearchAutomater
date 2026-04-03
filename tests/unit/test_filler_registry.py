@@ -8,16 +8,17 @@ from src.models.user_profile import UserProfile
 
 def _make_profile() -> UserProfile:
     return UserProfile(
+        profile_id="test",
         profile_name="test",
         first_name="John",
         last_name="Doe",
+        full_name="John Doe",
         email="john@example.com",
         phone="+1-555-0000",
         city="NYC",
         state="NY",
         country="USA",
         zip_code="10001",
-        resume_path="resume.pdf",
     )
 
 

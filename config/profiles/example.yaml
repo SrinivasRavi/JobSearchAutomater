@@ -1,53 +1,74 @@
 # UserProfile template — copy this file and fill in your details.
-# Save as config/profiles/your_profile_name.yaml (gitignored — contains PII).
+# Save as config/profiles/your_profile_id.yaml (gitignored — contains PII).
 #
 # Usage:
-#   python3 -m src.cli apply --next --profile your_profile_name
+#   python3 -m src.cli apply --next --profile your_profile_id
 #   python3 -m src.cli list-profiles
 
-profile_name: "Backend Mumbai"
+profile_id: backend_mumbai
+profile_name: Backend Mumbai
 
-name:
-  first: "FirstName"
-  last: "LastName"
+first_name: FirstName
+last_name: LastName
+full_name: FirstName LastName
 
-email: "your.email@example.com"
+email: your.email@example.com
 phone: "+91-XXXXXXXXXX"
 
 location:
-  city: "Mumbai"
-  state: "Maharashtra"
-  country: "India"
-  zip: "400001"
+  city: Mumbai
+  state: Maharashtra
+  country: India
+  zip_code: "400001"
 
-# Path to your resume PDF (relative to project root or absolute)
-resume_path: "config/resumes/resume.pdf"
+links:
+  linkedin_url: "https://linkedin.com/in/yourprofile"
+  github_url: "https://github.com/yourusername"
+  portfolio_url: ""
 
-linkedin_url: "https://linkedin.com/in/yourprofile"
-github_url: "https://github.com/yourusername"
-portfolio_url: ""
+employment:
+  years_of_experience: 5
+  notice_period_days: 30
 
-work_authorized: true
-sponsorship_required: false
-
-years_of_experience: 5
-current_company: ""
-current_title: ""
-notice_period_days: 30
+experience:
+  - company: "Your Current Company"
+    title: "Your Current Title"
+    from: "01/01/2022"
+    to: ""
+    currently_working_here: true
+  - company: "Previous Company"
+    title: "Previous Title"
+    from: "01/01/2019"
+    to: "31/12/2021"
+    currently_working_here: false
 
 education:
-  degree: "Bachelor of Engineering"
-  major: "Computer Science"
-  university: "Your University"
-  graduation_year: 2020
+  - degree: "MS"
+    major: "Computer Science"
+    university: "Your University"
+    graduation_year: 2019
+  - degree: "BE"
+    major: "Computer Engineering"
+    university: "Your University"
+    graduation_year: 2017
 
-preferred_roles:
-  - "Software Engineer"
-  - "Backend Engineer"
-  - "Software Developer"
+work_preferences:
+  target_roles:
+    - Backend Engineer
+    - Software Engineer
+    - Software Developer
+  target_locations:
+    - Mumbai
 
-# Default answers for common ATS demographic questions
-default_answers:
+documents:
+  resume_file_name: "resume.pdf"
+  resume_path_hint: "/path/to/your/resume.pdf"
+
+custom_answers:
+  sponsorship_required: "No"
+  authorized_to_work: "Yes"
+  current_ctc: ""
+  expected_ctc: ""
   gender: "Prefer not to say"
   ethnicity: "Prefer not to say"
   veteran_status: "No"

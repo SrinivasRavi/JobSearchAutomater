@@ -9,17 +9,19 @@ from src.models.user_profile import UserProfile
 
 def _make_profile() -> UserProfile:
     return UserProfile(
+        profile_id="backend_mumbai",
         profile_name="backend",
         first_name="Srini",
         last_name="Ravi",
+        full_name="Srini Ravi",
         email="srini@example.com",
         phone="+91-9876543210",
         city="Mumbai",
         state="Maharashtra",
         country="India",
         zip_code="400001",
-        resume_path="config/resumes/resume.pdf",
-        default_answers={"gender": "Prefer not to say", "veteran_status": "No"},
+        resume_path_hint="config/resumes/resume.pdf",
+        custom_answers={"gender": "Prefer not to say", "veteran_status": "No"},
     )
 
 
@@ -119,7 +121,7 @@ class TestWorkdayFillForm:
         page.query_selector.side_effect = query_selector_side_effect
 
         filler.fill_form(page)
-        page.set_input_files.assert_called_with("input[type='file']", "config/resumes/resume.pdf")
+        page.set_input_files.assert_called_with("input[type='file']", "config/resumes/resume.pdf")  # resume_path_hint
 
     def test_skips_missing_fields(self):
         filler = WorkdayFiller(_make_profile())
