@@ -64,6 +64,10 @@ documents:
   resume_file_name: "resume.pdf"
   resume_path_hint: "/path/to/your/resume.pdf"
 
+# Password for ATS account creation (Workday, etc.)
+# Must meet typical requirements: 8+ chars, uppercase, lowercase, number, special char
+ats_password: "YourPassword123!"
+
 custom_answers:
   sponsorship_required: "No"
   authorized_to_work: "Yes"

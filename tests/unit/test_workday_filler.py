@@ -21,6 +21,7 @@ def _make_profile() -> UserProfile:
         country="India",
         zip_code="400001",
         resume_path_hint="config/resumes/resume.pdf",
+        ats_password="TestPass123!",
         custom_answers={"gender": "Prefer not to say", "veteran_status": "No"},
     )
 
@@ -198,6 +199,90 @@ class TestWorkdayNavigation:
         with patch.object(filler, '_navigate_to_form', return_value=True) as mock_nav:
             filler.fill_form(page)
             mock_nav.assert_called_once_with(page)
+
+
+class TestWorkdayAccountCreation:
+    def _make_create_account_page(self):
+        """Mock a page that shows Create Account form."""
+        page = _make_page()
+
+        create_btn = MagicMock()
+        create_btn.is_visible.return_value = True
+
+        checkbox = MagicMock()
+        checkbox.is_visible.return_value = True
+        checkbox.is_checked.return_value = False
+
+        password_input_1 = MagicMock()
+        password_input_1.is_visible.return_value = True
+        password_input_2 = MagicMock()
+        password_input_2.is_visible.return_value = True
+        page.query_selector_all.return_value = [password_input_1, password_input_2]
+
+        email_el = MagicMock()
+        email_el.is_visible.return_value = True
+
+        def query_selector_side_effect(sel):
+            if "Create Account" in sel and "button" in sel.lower():
+                return create_btn
+            if "Create Account" in sel:
+                return create_btn
+            if "checkbox" in sel:
+                return checkbox
+            if "email" in sel.lower() or "Email" in sel:
+                return email_el
+            return None
+        page.query_selector.side_effect = query_selector_side_effect
+
+        return page, create_btn, checkbox, email_el, password_input_1, password_input_2
+
+    def test_detects_create_account_page(self):
+        filler = WorkdayFiller(_make_profile())
+        page, create_btn, *_ = self._make_create_account_page()
+        assert filler._is_create_account_page(page) is True
+
+    def test_does_not_detect_create_account_on_normal_page(self):
+        filler = WorkdayFiller(_make_profile())
+        page = _make_page()
+        page.query_selector.return_value = None
+        assert filler._is_create_account_page(page) is False
+
+    def test_fills_email_on_create_account(self):
+        filler = WorkdayFiller(_make_profile())
+        page, _, _, email_el, _, _ = self._make_create_account_page()
+        filler._handle_create_account(page)
+        email_el.fill.assert_called_with("srini@example.com")
+
+    def test_fills_both_password_fields(self):
+        filler = WorkdayFiller(_make_profile())
+        page, _, _, _, pw1, pw2 = self._make_create_account_page()
+        filler._handle_create_account(page)
+        pw1.fill.assert_called_with("TestPass123!")
+        pw2.fill.assert_called_with("TestPass123!")
+
+    def test_checks_consent_checkbox(self):
+        filler = WorkdayFiller(_make_profile())
+        page, _, checkbox, _, _, _ = self._make_create_account_page()
+        filler._handle_create_account(page)
+        checkbox.click.assert_called_once()
+
+    def test_clicks_create_account_button(self):
+        filler = WorkdayFiller(_make_profile())
+        page, create_btn, _, _, _, _ = self._make_create_account_page()
+        filler._handle_create_account(page)
+        create_btn.click.assert_called()
+
+    def test_navigate_handles_create_account_flow(self):
+        """Full navigation: Apply → modal → Create Account."""
+        filler = WorkdayFiller(_make_profile())
+        page, create_btn, checkbox, email_el, pw1, pw2 = self._make_create_account_page()
+
+        with patch.object(filler, '_handle_create_account') as mock_create:
+            # Make _is_create_account_page return True
+            with patch.object(filler, '_is_create_account_page', return_value=True):
+                result = filler._navigate_to_form(page)
+                assert result is True
+                mock_create.assert_called_once_with(page)
 
 
 class TestWorkdaySubmit:

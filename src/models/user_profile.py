@@ -39,6 +39,8 @@ class UserProfile:
     # Documents
     resume_file_name: str = ""
     resume_path_hint: str = ""
+    # ATS account creation
+    ats_password: str = ""
     # Catch-all for ATS-specific answers
     custom_answers: dict[str, str] = field(default_factory=dict)
 
@@ -71,6 +73,7 @@ class UserProfile:
             "target_locations": list(self.target_locations),
             "resume_file_name": self.resume_file_name,
             "resume_path_hint": self.resume_path_hint,
+            "ats_password": self.ats_password,
             "custom_answers": dict(self.custom_answers),
         }
 
@@ -156,5 +159,6 @@ def _parse_profile(data: dict) -> "UserProfile":
         target_locations=list(work_prefs_block.get("target_locations") or []),
         resume_file_name=documents_block.get("resume_file_name", ""),
         resume_path_hint=documents_block.get("resume_path_hint", ""),
+        ats_password=data.get("ats_password", ""),
         custom_answers=dict(data.get("custom_answers") or {}),
     )
