@@ -287,10 +287,12 @@ class TestWorkdayFillForm:
 
         with patch.object(filler, '_navigate_to_form', return_value=True):
             with patch.object(filler, '_take_screenshot'):
-                result = filler.fill_form(page)
-                assert "first_name" in result.fields_filled
-                assert filled_fields["first_name"] == "Srini"
-                assert filled_fields["last_name"] == "Ravi"
+                with patch.object(filler, '_get_page_title', return_value="My Information"):
+                    with patch.object(filler, '_click_save_continue', return_value=False):
+                        result = filler.fill_form(page)
+                        assert "first_name" in result.fields_filled
+                        assert filled_fields["first_name"] == "Srini"
+                        assert filled_fields["last_name"] == "Ravi"
 
     def test_skips_invisible_fields(self):
         filler = WorkdayFiller(_make_profile())
@@ -298,8 +300,10 @@ class TestWorkdayFillForm:
 
         with patch.object(filler, '_navigate_to_form', return_value=True):
             with patch.object(filler, '_take_screenshot'):
-                result = filler.fill_form(page)
-                assert len(result.fields_skipped) > 0
+                with patch.object(filler, '_get_page_title', return_value="My Information"):
+                    with patch.object(filler, '_click_save_continue', return_value=False):
+                        result = filler.fill_form(page)
+                        assert len(result.fields_skipped) > 0
 
 
 class TestWorkdaySubmit:
